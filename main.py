@@ -29,8 +29,9 @@ class Config:
     NEWS_API_KEY: str = os.getenv('NEWS_API_KEY', '')
     NEWS_SOURCES: str = 'reuters,bloomberg,financial-times,axios'
     NEWS_DOMAINS: str = 'reuters.com,bloomberg.com,ft.com,axios.com'
-    KEYWORDS: List[str] = []
-    PAGE_SIZE: int = 20
+    KEYWORDS: List[str] = os.getenv('KEYWORDS', '').split(',') if os.getenv('KEYWORDS') else []
+    PAGE_SIZE: int = int(os.getenv('PAGE_SIZE', '50'))
+    SORT_BY: str = os.getenv('SORT_BY', 'publishedAt')
 
     # 邮件配置
     SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')
@@ -73,7 +74,7 @@ def get_news() -> List[Dict[str, Any]]:
         'pageSize': Config.PAGE_SIZE,
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',
-        # 'sortBy': 'publishedAt'  # publishedAt 发布时间 relevancy 相关性 popularity 热度
+        'sortBy': Config.SORT_BY
     }
 
     try:

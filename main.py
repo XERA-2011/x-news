@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 # 加载环境变量
 from dotenv import load_dotenv
-if not load_dotenv():
-    logger.error("未找到.env文件或加载失败")
-    sys.exit(1)
+# 尝试加载.env文件，但不强制要求
+load_dotenv()
 
 # NewsAPI配置
 class Config:

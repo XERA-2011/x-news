@@ -22,7 +22,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run news mailer
+    - name: Run x-news
       env:
         NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

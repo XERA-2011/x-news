@@ -2,9 +2,9 @@
 
 ## 每日新闻，邮箱推送
 
-[![Python Version](https://img.shields.io/badge/python-3.3%2B-blue)]()
+[![Python Version](https://img.shields.io/badge/python-3.1%2B-blue)]()
 
-基于 AI 技术与 News API 的智能新闻聚合工具，可自动完成新闻摘要并通过邮件发送。
+调用 `News API` 通过 `Python` 自带的 `smtplib` 定时发送新闻邮件
 
 ## 功能特点
 

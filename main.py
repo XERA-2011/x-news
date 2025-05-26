@@ -33,8 +33,8 @@ class Config:
     PAGE_SIZE: int = 20
 
     # 邮件配置
-    SMTP_SERVER: str = "smtp.gmail.com"
-    SMTP_PORT: int = 465
+    SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')
+    SMTP_PORT: int = int(os.getenv('SMTP_PORT', 465))
     EMAIL_USER: str = os.getenv('EMAIL_USER', '')
     EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
     TO_EMAIL: str = os.getenv('TO_EMAIL', '')

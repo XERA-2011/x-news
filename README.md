@@ -45,19 +45,7 @@ python -m pip install -r requirements.txt
 ### 环境配置
 
 在项目根目录创建 `.env` 文件，配置必要的环境变量：
-
-```ini
-# API Keys
-NEWS_API_KEY=your_news_api_key
-OPENAI_API_KEY=your_openai_api_key
-
-# 邮件服务器配置
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=465
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-TO_EMAIL=recipient@example.com
-```
+参考 `.env.example` 示例文件
 
 ### 运行程序
 

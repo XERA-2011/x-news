@@ -2,7 +2,7 @@ name: x-news
 
 on:
   schedule:
-    - cron: '0 8 * * *'  # 每天UTC时间8点运行（北京时间16点）
+    - cron: '30 0 * * *'  # 每天UTC时间0:30运行（北京时间8:30）
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.13.3'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -31,4 +31,4 @@ jobs:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         TO_EMAIL: ${{ secrets.TO_EMAIL }}
-      run: python news_mailer.py
+      run: python main.py

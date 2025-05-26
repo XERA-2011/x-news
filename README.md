@@ -1,4 +1,6 @@
-# X-NEWS 智能新闻助手
+# X-NEWS
+
+## 每日新闻，邮箱推送
 
 [![Python Version](https://img.shields.io/badge/python-3.3%2B-blue)]()
 

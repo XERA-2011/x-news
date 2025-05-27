@@ -26,7 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run x-news
+    - name: Run main
       env:
         # 从 Variables 获取的变量
         PAGE_SIZE: ${{ vars.PAGE_SIZE }}

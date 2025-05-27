@@ -2,9 +2,8 @@ name: x-news
 
 on:
   schedule:
-    # - cron: '30 0 * * *'  # 每天UTC时间0:30运行（北京时间8:30）
+    - cron: '30 0 * * *'  # 每天UTC时间0:30运行（北京时间8:30）
     # - cron: '*/30 * * * *'  # 每30分钟执行一次(仅用于测试)
-    - cron: '30 5 * * *'  # 每天UTC时间5:30运行（北京时间13:30）
   workflow_dispatch:  # 保留手动触发选项
 
 permissions:

@@ -5,6 +5,7 @@ import smtplib
 import requests
 from typing import List, Dict, Optional, Any
 from email.mime.text import MIMEText
+from email.utils import formataddr
 from datetime import datetime, timedelta
 from openai import OpenAI
 
@@ -37,6 +38,7 @@ class Config:
     EMAIL_USER: str = os.getenv('EMAIL_USER', '')
     EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
     TO_EMAIL: str = os.getenv('TO_EMAIL', '')
+    EMAIL_FROM_NAME: str = os.getenv('EMAIL_FROM_NAME', 'X-NEWS')  # 新增发件人显示名称配置
 
     # OpenAI配置
     OPENAI_API_KEY: Optional[str] = os.getenv('OPENAI_API_KEY')
@@ -146,8 +148,7 @@ def send_email(content: str) -> None:
     """通过SMTP发送邮件"""
     msg = MIMEText(content, 'html', 'utf-8')
     msg['Subject'] = f"每日新闻简报 {datetime.now().strftime('%Y-%m-%d')}"
-    # msg['From'] = Config.EMAIL_USER
-    msg['From'] = 'X-NEWS'
+    msg['From'] = formataddr((Config.EMAIL_FROM_NAME, Config.EMAIL_USER))  # 使用 formataddr 设置发件人
     msg['To'] = Config.TO_EMAIL
 
     try:

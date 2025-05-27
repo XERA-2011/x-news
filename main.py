@@ -118,11 +118,13 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'<style type="text/css">'
         f'.container {{ max-width: 800px; margin: 0 auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
         f'.title {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; text-align: center; }}'
-        f'.article {{ background: #f9f9f9; padding: 15px; margin-bottom: 20px; border-radius: 5px; }}'
-        f'.article h3 {{ margin: 0; }}'
+        f'.article {{ background: #f9f9f9; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}'
+        f'.article h3 {{ margin: 0 0 15px 0; font-size: 1.4em; }}'
         f'.article a {{ color: #3498db; text-decoration: none; }}'
         f'.article a:hover {{ text-decoration: underline; }}'
-        f'.summary {{ color: #34495e; margin: 10px 0; }}'
+        f'.article-meta {{ display: flex; gap: 15px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 0.9em; }}'
+        f'.article-image {{ width: 100%; max-height: 300px; object-fit: cover; margin: 10px 0; border-radius: 5px; }}'
+        f'.summary {{ color: #34495e; margin: 15px 0; line-height: 1.6; }}'
         f'.source {{ color: #7f8c8d; font-size: 0.9em; }}'
         f'</style>'
         f'</head>'
@@ -132,12 +134,33 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
     )
 
     for article in articles:
+        # 处理发布时间
+        published_at = datetime.fromisoformat(article.get('publishedAt', '').replace('Z', '+00:00'))
+        formatted_date = published_at.strftime('%Y-%m-%d %H:%M')
+
+        # 获取摘要
         summary = generate_summary(article.get('content', '')) or article.get('description', '暂无描述')
+
+        # 构建文章HTML
         html_content += (
             f'<div class="article">'
             f'<h3><a href="{article["url"]}" target="_blank">{article["title"]}</a></h3>'
+            f'<div class="article-meta">'
+            f'<span>📅 {formatted_date}</span>'
+        )
+
+        if article.get('author'):
+            html_content += f'<span>✍️ {article["author"]}</span>'
+
+        html_content += f'<span>🗞️ {article["source"]["name"]}</span>'
+        html_content += f'</div>'
+
+        # 如果有图片则显示
+        if article.get('urlToImage'):
+            html_content += f'<img class="article-image" src="{article["urlToImage"]}" alt="{article["title"]}">'
+
+        html_content += (
             f'<p class="summary">{summary}</p>'
-            f'<div class="source">来源：{article["source"]["name"]}</div>'
             f'</div>'
         )
 

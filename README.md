@@ -4,7 +4,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.1%2B-blue)]()
 
-调用 `News API` 通过 `Python` 自带的 `smtplib` 定时发送新闻邮件
+调用 [News API](https://newsapi.org/) 通过 `Python` 自带的 `smtplib` 定时发送新闻邮件
 
 ## 功能特点
 

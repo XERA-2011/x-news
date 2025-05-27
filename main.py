@@ -146,7 +146,8 @@ def send_email(content: str) -> None:
     """通过SMTP发送邮件"""
     msg = MIMEText(content, 'html', 'utf-8')
     msg['Subject'] = f"每日新闻简报 {datetime.now().strftime('%Y-%m-%d')}"
-    msg['From'] = Config.EMAIL_USER
+    # msg['From'] = Config.EMAIL_USER
+    msg['From'] = 'X-NEWS'
     msg['To'] = Config.TO_EMAIL
 
     try:

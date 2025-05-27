@@ -27,9 +27,9 @@ load_dotenv()
 # NewsAPI配置
 class Config:
     NEWS_API_KEY: str = os.getenv('NEWS_API_KEY', '')
-    NEWS_SOURCES: str = 'reuters,bloomberg,financial-times,axios'
+    NEWS_SOURCES: str = os.getenv('NEWS_SOURCES', '')
     PAGE_SIZE: int = int(os.getenv('PAGE_SIZE', '50'))
-    NEWS_DAYS: int = int(os.getenv('NEWS_DAYS', '1'))  # 新闻获取天数，默认3天
+    NEWS_DAYS: int = int(os.getenv('NEWS_DAYS', '1'))
 
     # 邮件配置
     SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')

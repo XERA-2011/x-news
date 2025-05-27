@@ -32,6 +32,7 @@ jobs:
         PAGE_SIZE: ${{ vars.PAGE_SIZE }}
         TO_EMAIL: ${{ vars.TO_EMAIL }}
         NEWS_DAYS: ${{ vars.NEWS_DAYS }}
+        NEWS_SOURCES: ${{ vars.NEWS_SOURCES }}
 
         # 从 Secrets 获取的敏感信息
         SMTP_PORT: ${{ secrets.SMTP_PORT }}

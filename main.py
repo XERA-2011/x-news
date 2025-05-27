@@ -28,9 +28,8 @@ load_dotenv()
 class Config:
     NEWS_API_KEY: str = os.getenv('NEWS_API_KEY', '')
     NEWS_SOURCES: str = 'reuters,bloomberg,financial-times,axios'
-    NEWS_DOMAINS: str = 'reuters.com,bloomberg.com,ft.com,axios.com'
-    KEYWORDS: List[str] = os.getenv('KEYWORDS', '').split(',') if os.getenv('KEYWORDS') else []
     PAGE_SIZE: int = int(os.getenv('PAGE_SIZE', '50'))
+    NEWS_DAYS: int = int(os.getenv('NEWS_DAYS', '1'))  # 新闻获取天数，默认3天
 
     # 邮件配置
     SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')
@@ -52,26 +51,19 @@ class Config:
                 return False
         return True
 
-# 邮件配置
-SMTP_SERVER = os.getenv('SMTP_SERVER')
-SMTP_PORT = os.getenv('SMTP_PORT')
-EMAIL_USER = os.getenv('EMAIL_USER')
-EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-TO_EMAIL = os.getenv('TO_EMAIL')
-
 # OpenAI配置（可选）
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 def get_news() -> List[Dict[str, Any]]:
     """从NewsAPI获取新闻"""
     url = 'https://newsapi.org/v2/top-headlines'
-    # 设置时间范围为过去24小时
+    # 设置时间范围
+    days = Config.NEWS_DAYS
     to_date = datetime.now()
-    from_date = to_date - timedelta(hours=24)
+    from_date = to_date - timedelta(days=days)
 
     params = {
-        'sources': Config.NEWS_SOURCES,
-        'domains': Config.NEWS_DOMAINS,
+        'sources': Config.NEWS_SOURCES,  # top-headlines 只支持 sources 参数
         'pageSize': Config.PAGE_SIZE,
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',

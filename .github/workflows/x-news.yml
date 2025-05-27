@@ -2,7 +2,8 @@ name: x-news
 
 on:
   schedule:
-    - cron: '30 0 * * *'  # 每天UTC时间0:30运行（北京时间8:30）
+    # - cron: '30 0 * * *'  # 每天UTC时间0:30运行（北京时间8:30）
+    - cron: '0 3 * * *'  # 每天UTC时间3:00运行（北京时间11:00）
   workflow_dispatch:
 
 jobs:
@@ -24,11 +25,16 @@ jobs:
 
     - name: Run x-news
       env:
-        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        # 从 Variables 获取的变量
+        PAGE_SIZE: ${{ vars.PAGE_SIZE }}
+        TO_EMAIL: ${{ vars.TO_EMAIL }}
+
+        # 从 Secrets 获取的敏感信息
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
       run: python main.py

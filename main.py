@@ -5,7 +5,7 @@ import smtplib
 import requests
 from typing import List, Dict, Optional, Any
 from email.mime.text import MIMEText
-from datetime import datetime
+from datetime import datetime, timedelta
 from openai import OpenAI
 
 # 配置日志
@@ -31,7 +31,6 @@ class Config:
     NEWS_DOMAINS: str = 'reuters.com,bloomberg.com,ft.com,axios.com'
     KEYWORDS: List[str] = os.getenv('KEYWORDS', '').split(',') if os.getenv('KEYWORDS') else []
     PAGE_SIZE: int = int(os.getenv('PAGE_SIZE', '50'))
-    SORT_BY: str = os.getenv('SORT_BY', 'publishedAt')
 
     # 邮件配置
     SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')
@@ -66,22 +65,25 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 def get_news() -> List[Dict[str, Any]]:
     """从NewsAPI获取新闻"""
     url = 'https://newsapi.org/v2/top-headlines'
-    # url = 'https://newsapi.org/v2/everything'
+    # 设置时间范围为过去24小时
+    to_date = datetime.now()
+    from_date = to_date - timedelta(hours=24)
+
     params = {
-        'q': ' OR '.join(Config.KEYWORDS),
         'sources': Config.NEWS_SOURCES,
         'domains': Config.NEWS_DOMAINS,
         'pageSize': Config.PAGE_SIZE,
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',
-        'sortBy': Config.SORT_BY
+        'from': from_date.strftime('%Y-%m-%d'),
+        'to': to_date.strftime('%Y-%m-%d')
     }
 
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         articles = response.json()['articles']
-        logger.info(f"成功获取 {len(articles)} 条新闻")
+        logger.info(f"成功获取 {len(articles)} 条新闻，时间范围：{from_date.strftime('%Y-%m-%d')} 至 {to_date.strftime('%Y-%m-%d')}")
         return articles
     except requests.Timeout:
         logger.error("获取新闻超时")

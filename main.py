@@ -120,7 +120,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'* {{ box-sizing: border-box; }}'
         f'body {{ margin: 0; padding: 15px; background: #f5f5f5; }}'
         f'.container {{ max-width: 800px; margin: 0 auto; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
-        f'.title {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; text-align: center; font-size: clamp(1.5rem, 4vw, 2rem); margin: 0.5em 0 1em; }}'
+        f'.title {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; text-align: center; font-size: clamp(1.5rem, 4vw, 2rem); margin: 0 0 1em; }}'
         f'.article {{ background: #ffffff; padding: clamp(15px, 3vw, 25px); margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
         f'.article h3 {{ margin: 0 0 15px 0; font-size: clamp(1.1rem, 3vw, 1.4rem); line-height: 1.4; }}'
         f'.article a {{ color: #2980b9; text-decoration: none; display: block; }}'

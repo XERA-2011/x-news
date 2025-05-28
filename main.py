@@ -7,7 +7,6 @@ from typing import List, Dict, Optional, Any
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from datetime import datetime, timedelta
-from openai import OpenAI
 
 # 配置日志
 logging.basicConfig(
@@ -39,9 +38,6 @@ class Config:
     EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
     TO_EMAIL: str = os.getenv('TO_EMAIL', '')
     EMAIL_FROM_NAME: str = os.getenv('EMAIL_FROM_NAME', 'X-NEWS')  # 新增发件人显示名称配置
-
-    # OpenAI配置（可选）
-    OPENAI_API_KEY: Optional[str] = os.getenv('OPENAI_API_KEY')
 
     @classmethod
     def validate(cls) -> bool:
@@ -83,31 +79,6 @@ def get_news() -> List[Dict[str, Any]]:
         logger.error(f"获取新闻失败: {str(e)}")
         raise
 
-def generate_ai_summary(text: str) -> Optional[str]:
-    """使用AI生成新闻汇总"""
-    if not Config.OPENAI_API_KEY:
-        return None
-    # 推荐使用Google Gemini API，因为免费
-    client = OpenAI(
-        api_key=Config.OPENAI_API_KEY,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-    )
-    try:
-        response = client.chat.completions.create(
-            model="gemini-2.0-flash",
-            messages=[{
-                "role": "user",
-                "content": f"请用中文生成一行新闻摘要（不超过30字）：{text[:1000]}"
-            }],
-            temperature=0.7,
-            max_tokens=60
-        )
-        summary = response.choices[0].message.content.strip()
-        logger.debug(f"生成摘要: {summary}")
-        return summary
-    except Exception as e:
-        logger.error(f"生成摘要失败: {str(e)}")
-        return None
 
 def create_email_content(articles: List[Dict[str, Any]]) -> str:
     """生成HTML邮件内容"""
@@ -156,8 +127,6 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         published_at = datetime.fromisoformat(article.get('publishedAt', '').replace('Z', '+00:00'))
         formatted_date = published_at.strftime('%Y-%m-%d %H:%M')
 
-        # 获取AI汇总
-        ai_summary = generate_ai_summary(article.get('content', ''))
         description = article.get('description', '暂无描述')
 
         # 构建文章HTML
@@ -174,11 +143,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         html_content += f'<span>🗞️ {article["source"]["name"]}</span>'
         html_content += f'</div>'
 
-        # 如果有AI汇总，显示在来源下方
-        if ai_summary:
-            html_content += f'<p class="ai-summary" style="color: #2c3e50; margin: 12px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.95em;"><span style="color: #16a085; font-weight: 600;">🤖 AI汇总：</span>{ai_summary}</p>'
-
-        # 如果有原始描述，显示在AI汇总下方
+        # 如果有原始描述，显示
         if description:
             html_content += f'<p class="description">{description}</p>'
 

@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Any
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from datetime import datetime, timedelta
+from translate import Translator
 
 # 配置日志
 logging.basicConfig(
@@ -106,8 +107,11 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 0.9em; }}'
         f'.article-meta span {{ white-space: nowrap; }}'
         f'.article-image {{ width: 100%; height: auto; max-height: clamp(200px, 30vh, 300px); object-fit: cover; margin: 12px 0; border-radius: 8px; }}'
-        f'.summary {{ color: #34495e; margin: 15px 0; line-height: 1.6; font-size: clamp(0.95rem, 2.5vw, 1.1rem); }}'
+        f'.summary {{ margin: 15px 0; line-height: 1.6; font-size: clamp(0.95rem, 2.5vw, 1.1rem); }}'
         f'.source {{ color: #7f8c8d; font-size: 0.9em; }}'
+        f'.text-group {{ color: #34495e; }}'  # 统一文字颜色
+        f'.text-translated {{ margin-top: 8px; }}'  # 翻译文本样式
+        f'.text-divider {{ border-left: 3px solid #e8e8e8; margin: 10px 0; padding-left: 10px; }}'  # 分隔线样式
         f'@media (max-width: 600px) {{'
         f'  body {{ padding: 10px; }}'
         f'  .container {{ padding: 10px; }}'
@@ -127,12 +131,21 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         published_at = datetime.fromisoformat(article.get('publishedAt', '').replace('Z', '+00:00'))
         formatted_date = published_at.strftime('%Y-%m-%d %H:%M')
 
+        # 获取并翻译内容
+        title = article['title']
+        title_zh = translate_text(title)
         description = article.get('description', '暂无描述')
+        description_zh = translate_text(description) if description != '暂无描述' else description
 
         # 构建文章HTML
         html_content += (
             f'<div class="article">'
-            f'<h3><a href="{article["url"]}" target="_blank">{article["title"]}</a></h3>'
+            f'<h3>'
+            f'<div class="text-group">'
+            f'<a href="{article["url"]}" target="_blank">{title}</a>'  # 英文标题
+            f'<a href="{article["url"]}" target="_blank" class="text-translated">{title_zh}</a>'  # 中文标题
+            f'</div>'
+            f'</h3>'
             f'<div class="article-meta">'
             f'<span>📅 {formatted_date}</span>'
         )
@@ -143,13 +156,18 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         html_content += f'<span>🗞️ {article["source"]["name"]}</span>'
         html_content += f'</div>'
 
-        # 如果有原始描述，显示
+        # 显示描述（中英文）
         if description:
-            html_content += f'<p class="description">{description}</p>'
+            html_content += (
+                f'<div class="text-divider text-group">'
+                f'<p class="description">{description}</p>'  # 英文描述
+                f'<p class="text-translated">{description_zh}</p>'  # 中文描述
+                f'</div>'
+            )
 
         # 如果有图片则显示
         if article.get('urlToImage'):
-            html_content += f'<img class="article-image" src="{article["urlToImage"]}" alt="{article["title"]}">'
+            html_content += f'<img class="article-image" src="{article["urlToImage"]}" alt="{title_zh}">'
 
         html_content += f'</div>'
 
@@ -171,6 +189,18 @@ def send_email(content: str) -> None:
     except smtplib.SMTPException as e:
         logger.error(f"邮件发送失败: {str(e)}")
         raise
+
+def translate_text(text: str) -> str:
+    """将英文文本翻译为中文"""
+    if not text:
+        return ""
+    try:
+        translator = Translator(to_lang='zh')
+        result = translator.translate(text)
+        return result
+    except Exception as e:
+        logger.warning(f"翻译失败: {str(e)}")
+        return text  # 如果翻译失败，返回原文
 
 def main() -> None:
     """主函数"""

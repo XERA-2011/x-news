@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import requests
+from translate import Translator
 
 load_dotenv()
 
@@ -51,6 +52,34 @@ def generate_news_summary(articles):
     except Exception as e:
         print(f"生成摘要失败: {str(e)}")
 
+def translate_news(articles):
+    """
+    翻译新闻列表中的英文内容为中文
+    Args:
+        articles: 新闻文章列表，每个文章应包含 title、description 和 content 字段
+    """
+    try:
+        translator = Translator(to_lang="zh")
+        print("\n翻译新闻内容:")
+
+        for article in articles:
+            title = article['title']
+            description = article['description'] or ""
+            content = article['content'] or ""
+
+            # 翻译内容
+            translated_title = translator.translate(title)
+            translated_desc = translator.translate(description) if description else ""
+
+            print(f"\n原标题: {title}")
+            print(f"翻译标题: {translated_title}")
+            print(f"原描述: {description}")
+            print(f"翻译描述: {translated_desc}")
+            print("-" * 80)
+
+    except Exception as e:
+        print(f"翻译失败: {str(e)}")
+
 def test_newsapi():
     # 获取新闻数据
     response = requests.get(
@@ -60,8 +89,10 @@ def test_newsapi():
     articles = response.json()['articles']
     print(f"获取到 {len(articles)} 条新闻")
 
+    # 翻译新闻
+    translate_news(articles)
     # AI生成摘要
-    generate_news_summary(articles)
+    # generate_news_summary(articles)
 
 def test_newsapi_sources():
     import requests

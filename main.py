@@ -125,7 +125,8 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'body {{ margin: 0; padding: 15px; background: #f5f5f5; }}'
         f'.container {{ max-width: 800px; margin: 0 auto; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
         f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 5px; text-align: center; font-size: clamp(1.5rem, 4vw, 2rem); margin: 0; }}'
-        f'.sources-tag {{ display: inline-flex; align-items: center; gap: 8px; color: #7f8c8d; text-align: center; font-size: 0.9rem; margin: 0.5em auto 2em; padding: 6px 16px; background: rgba(127,140,141,0.1); border-radius: 20px; }}'
+        f'.sources-wrapper {{ width: 100%; text-align: center; margin: 0.5em 0 2em; }}'
+        f'.sources-tag {{ display: inline-flex; align-items: center; gap: 8px; color: #7f8c8d; font-size: 0.9rem; padding: 6px 16px; background: rgba(127,140,141,0.1); border-radius: 20px; }}'
         f'.sources-tag::before {{ content: "📰"; }}'
         f'.article {{ background: #ffffff; padding: clamp(15px, 3vw, 25px); margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
         f'.article h3 {{ margin: 0 0 15px 0; font-size: clamp(1.1rem, 3vw, 1.4rem); line-height: 1.4; }}'
@@ -147,7 +148,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'<body>'
         f'<div class="container">'
         f'<h2 class="title">TOP{len(articles)} 新闻摘要</h2>'
-        f'<div class="sources-tag">{sources_text}</div>'
+        f'<div class="sources-wrapper"><div class="sources-tag">{sources_text}</div></div>'
     )
 
     for article in articles:

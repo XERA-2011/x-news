@@ -40,7 +40,7 @@ class Config:
     TO_EMAIL: str = os.getenv('TO_EMAIL', '')
     EMAIL_FROM_NAME: str = os.getenv('EMAIL_FROM_NAME', 'X-NEWS')  # 新增发件人显示名称配置
 
-    # OpenAI配置
+    # OpenAI配置（可选）
     OPENAI_API_KEY: Optional[str] = os.getenv('OPENAI_API_KEY')
 
     @classmethod
@@ -52,9 +52,6 @@ class Config:
                 logger.error(f"缺少必要的配置: {field}")
                 return False
         return True
-
-# OpenAI配置（可选）
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 def get_news() -> List[Dict[str, Any]]:
     """从NewsAPI获取新闻"""
@@ -86,15 +83,18 @@ def get_news() -> List[Dict[str, Any]]:
         logger.error(f"获取新闻失败: {str(e)}")
         raise
 
-def generate_summary(text: str) -> Optional[str]:
-    """使用OpenAI生成摘要"""
+def generate_ai_summary(text: str) -> Optional[str]:
+    """使用AI生成新闻汇总"""
     if not Config.OPENAI_API_KEY:
         return None
-
-    client = OpenAI(api_key=Config.OPENAI_API_KEY)
+    # 推荐使用Google Gemini API，因为免费
+    client = OpenAI(
+        api_key=Config.OPENAI_API_KEY,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gemini-2.0-flash",
             messages=[{
                 "role": "user",
                 "content": f"请用中文生成一行新闻摘要（不超过30字）：{text[:1000]}"
@@ -156,8 +156,9 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         published_at = datetime.fromisoformat(article.get('publishedAt', '').replace('Z', '+00:00'))
         formatted_date = published_at.strftime('%Y-%m-%d %H:%M')
 
-        # 获取摘要
-        summary = generate_summary(article.get('content', '')) or article.get('description', '暂无描述')
+        # 获取AI汇总
+        ai_summary = generate_ai_summary(article.get('content', ''))
+        description = article.get('description', '暂无描述')
 
         # 构建文章HTML
         html_content += (
@@ -173,14 +174,19 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         html_content += f'<span>🗞️ {article["source"]["name"]}</span>'
         html_content += f'</div>'
 
+        # 如果有AI汇总，显示在来源下方
+        if ai_summary:
+            html_content += f'<p class="ai-summary" style="color: #2c3e50; margin: 12px 0; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.95em;"><span style="color: #16a085; font-weight: 600;">🤖 AI汇总：</span>{ai_summary}</p>'
+
+        # 如果有原始描述，显示在AI汇总下方
+        if description:
+            html_content += f'<p class="description">{description}</p>'
+
         # 如果有图片则显示
         if article.get('urlToImage'):
             html_content += f'<img class="article-image" src="{article["urlToImage"]}" alt="{article["title"]}">'
 
-        html_content += (
-            f'<p class="summary">{summary}</p>'
-            f'</div>'
-        )
+        html_content += f'</div>'
 
     html_content += '</div></body></html>'
     return html_content

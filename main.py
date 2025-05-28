@@ -148,7 +148,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'<body>'
         f'<div class="container">'
         f'<h2 class="title">TOP{len(articles)} 新闻摘要</h2>'
-        f'<div class="sources-wrapper"><div class="sources-tag">{sources_text}</div></div>'
+        f'<div class="sources-wrapper"><div class="sources-tag">来源：{sources_text}</div></div>'
     )
 
     for article in articles:

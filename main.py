@@ -52,7 +52,8 @@ class Config:
 
 def get_news() -> List[Dict[str, Any]]:
     """从NewsAPI获取新闻"""
-    url = 'https://newsapi.org/v2/top-headlines'
+    # url = 'https://newsapi.org/v2/top-headlines'
+    url = 'https://newsapi.org/v2/everything'  # 使用 everything 以支持时间范围查询
     # 设置时间范围
     days = Config.NEWS_DAYS
     to_date = datetime.now()
@@ -63,6 +64,7 @@ def get_news() -> List[Dict[str, Any]]:
         'pageSize': Config.PAGE_SIZE,
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',
+        'sortBy': 'popularity',
         'from': from_date.strftime('%Y-%m-%d'),
         'to': to_date.strftime('%Y-%m-%d')
     }

@@ -14,8 +14,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('main.log', encoding='utf-8')
+        # logging.FileHandler('main.log', encoding='utf-8'), 暂时无需生成日志文件
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)

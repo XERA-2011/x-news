@@ -65,8 +65,8 @@ def get_news() -> List[Dict[str, Any]]:
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',
         # 'sortBy': 'popularity',
-        # 'from': from_date.strftime('%Y-%m-%d'),
-        # 'to': to_date.strftime('%Y-%m-%d')
+        'from': from_date.strftime('%Y-%m-%d'),
+        'to': to_date.strftime('%Y-%m-%d')
     }
 
     try:

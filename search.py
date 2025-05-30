@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def google_custom_search(query, num_results=5):
+def google_custom_search(query, num_results=10):
     """
     使用 Google Custom Search JSON API 执行网络搜索
     
@@ -69,7 +69,7 @@ def google_custom_search(query, num_results=5):
         return None
 
 
-def format_search_results(search_results, max_snippets=3, include_urls=True):
+def format_search_results(search_results, max_snippets=10, include_urls=True):
     """
     将Google搜索结果格式化为可读的文本
     

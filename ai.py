@@ -5,6 +5,9 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import datetime
 
+# 导入搜索功能
+from search import google_custom_search, format_search_results
+
 load_dotenv()
 
 # 可用的Gemini模型列表
@@ -203,7 +206,7 @@ def list_free_models():
     print("-" * 80)
 
 
-def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None):
+def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None, enable_search=False, search_results_count=3):
     """
     使用 Gemini AI 模型获取对指定问题的回答
     
@@ -212,6 +215,8 @@ def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None)
         model_name (str, optional): 使用的模型名称。默认为 "gemini-1.5-flash-latest"。
             可用模型：gemini-1.5-pro-latest, gemini-1.5-flash-latest, gemini-pro, gemini-pro-vision
         max_output_tokens (int, optional): 最大输出令牌数。如果不指定，将根据模型自动设置。
+        enable_search (bool, optional): 是否启用网络搜索功能。默认为False。
+        search_results_count (int, optional): 如果启用搜索，指定返回的搜索结果数量。
     """
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
@@ -273,6 +278,82 @@ def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None)
         print(f"\n🤖 向AI提问: {prompt}")
         print("-" * 80)
         
+        # 如果启用搜索功能，先执行搜索并增强提示
+        search_info = ""
+        if enable_search:
+            # 针对新闻查询优化搜索关键词
+            search_query = prompt
+            if "新闻" in prompt or "TOP" in prompt.upper() or "热点" in prompt:
+                current_date = datetime.datetime.now().strftime("%Y年%m月")
+                
+                # 计算过去三天的日期范围
+                today = datetime.datetime.now()
+                three_days_ago = (today - datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+                today_str = today.strftime("%Y-%m-%d")
+                date_range = f"after:{three_days_ago} before:{today_str}"
+                
+                # 特别关注财经、军事和国际重大新闻，限制三天内
+                search_query = f"(财经|金融|经济|军事|国际大事|全球新闻) 热点 重要 {date_range} site:ft.com OR site:wsj.com OR site:bloomberg.com OR site:reuters.com OR site:news.cn OR site:bbc.com OR site:cnn.com OR site:military.com"
+                print(f"优化新闻搜索关键词 (最近3天): '{search_query}'")                
+                # 按用户偏好增加财经新闻搜索(最近3天)
+                finance_search_query = f"(全球财经|金融市场|股市|汇率|经济新闻) 重要 {date_range} site:ft.com OR site:wsj.com OR site:bloomberg.com OR site:cnbc.com"
+                print(f"搜索财经新闻 (最近3天)...")
+                finance_results = google_custom_search(finance_search_query, max(3, search_results_count//3))
+                
+                # 按用户偏好增加军事新闻搜索(最近3天)
+                military_search_query = f"(军事新闻|军事冲突|安全局势|战争|国防) 重要 {date_range} site:military.com OR site:defenseone.com OR site:news.cn OR site:bbc.com"
+                print(f"搜索军事新闻 (最近3天)...")
+                military_results = google_custom_search(military_search_query, max(3, search_results_count//3))
+                
+            print(f"正在进行网络搜索...")
+            search_results = google_custom_search(search_query, search_results_count)
+            
+            if search_results and search_results.get('items'):
+                search_info = format_search_results(search_results, search_results_count)
+                print("搜索完成，找到相关信息")
+                
+                # 针对新闻类查询构建专门的提示
+                if "新闻" in prompt or "TOP" in prompt.upper() or "热点" in prompt:
+                    # 整合额外的财经和军事新闻搜索结果（如果有）
+                    finance_info = ""
+                    if 'finance_results' in locals() and finance_results and finance_results.get('items'):
+                        finance_info = "\n### 财经重要新闻\n" + format_search_results(finance_results, max(3, search_results_count//3))
+                        
+                    military_info = ""
+                    if 'military_results' in locals() and military_results and military_results.get('items'):
+                        military_info = "\n### 军事重要新闻\n" + format_search_results(military_results, max(3, search_results_count//3))
+                    
+                    # 合并所有搜索结果
+                    all_search_info = search_info + finance_info + military_info
+                    
+                    enhanced_prompt = f"""你是一位专业的新闻分析师。我将为你提供一些最近三天内的新闻搜索结果，你的任务是整合这些信息并提取当前最重要的全球新闻事件。
+
+这是最近三天的新闻搜索结果：
+{all_search_info}
+
+基于以上搜索结果和你的知识，请回答以下问题：{prompt}
+
+要求：
+1. 分析并提取最近三天内最重要的全球新闻事件，特别注重财经、军事和重大国际事件
+2. 按重要性排序列出新闻条目，根据最新搜索结果确保内容的时效性
+3. 每条新闻简要描述具体事件和影响，并注明属于哪类新闻（财经/军事/国际）
+4. 尽量提供新闻发生的大致时间或日期
+5. 如果搜索结果中没有足够信息，请基于你的知识来补充可能的重要新闻
+
+请确保你的回答清晰、准确、客观、有条理。"""
+                else:
+                    # 一般查询的增强提示
+                    enhanced_prompt = f"""我将为你提供一些最新的搜索结果，请基于这些信息和你的知识回答以下问题。
+
+{search_info}
+
+现在请回答这个问题：{prompt}
+
+请综合使用搜索结果和你的知识进行回答，所有回答需要准确且及时。如果搜索结果中有更及时的信息，请以搜索结果为准。请用中文回答。"""
+                prompt = enhanced_prompt
+            else:
+                print("无法获取搜索结果或未找到相关信息")
+        
         # 生成内容
         response = model.generate_content(
             prompt,
@@ -297,4 +378,11 @@ if __name__ == "__main__":
     # list_free_models()
     
     # 使用特定模型进行提问 (根据实际可用模型调整)
-    ask_ai("你能使用哪些工具进行联网搜索？",'gemini-2.5-flash-preview-05-20')
+    # 不启用联网搜索的基本用法
+    # ask_ai("你能使用哪些工具进行联网搜索？", model_name="gemini-2.5-flash-preview-05-20")
+    
+    # 启用联网搜索的增强用法
+    ask_ai("截止至当前，全球大新闻TOP10", 
+          model_name="gemini-1.5-flash-latest", 
+          enable_search=True, 
+          search_results_count=10)

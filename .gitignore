@@ -3,7 +3,7 @@ node_modules
 /dist
 .venv
 main.log
-
+__pycache__
 
 # local env files
 .env

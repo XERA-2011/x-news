@@ -285,7 +285,7 @@ def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None,
             
             if search_results and search_results.get('items'):
                 search_info = format_search_results(search_results, search_results_count)
-                print("搜索完成，找到相关信息",search_info)
+                print("搜索完成，找到相关信息",len(search_info))
                 
                 # 构建增强提示
                 enhanced_prompt = f"""我将为你提供一些最新的搜索结果，请基于这些信息和你的知识回答以下问题。
@@ -323,7 +323,7 @@ if __name__ == "__main__":
     # list_free_models()
 
     # 启用联网搜索的示例
-    ask_ai("热点新闻", 
+    ask_ai("bloomberg", 
           model_name="gemini-1.5-flash-latest",
           enable_search=True,
           search_results_count=10)

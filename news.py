@@ -116,6 +116,14 @@ def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
     }}
 ]
 
+同时，请提取所有h2、h3标题中的关键词，并以JSON格式返回：
+{{
+    "keywords": {{
+        "en": ["关键词1", "关键词2", ...],
+        "zh": ["中文关键词1", "中文关键词2", ...]
+    }}
+}}
+
 HTML内容：
 {html_content}
 
@@ -127,10 +135,15 @@ HTML内容：
             import json
             import re
             
-            # 尝试提取JSON内容
-            json_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
+            # 尝试提取新闻内容和关键词
+            news_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
+            keywords_match = re.search(r'\{\s*"keywords"\s*:\s*\{.*\}\s*\}', response, re.DOTALL)
+            
+            articles = []
+            keywords = {"en": [], "zh": []}
+            
+            if news_match:
+                json_str = news_match.group(0)
                 try:
                     articles = json.loads(json_str)
                     # 验证每个文章对象是否完整
@@ -143,35 +156,30 @@ HTML内容：
                     
                     if valid_articles:
                         logger.info(f"成功分析 {len(valid_articles)} 条新闻")
-                        return valid_articles
+                        articles = valid_articles
                     else:
                         logger.error("没有找到完整的新闻内容")
-                        return []
+                        articles = []
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON解析失败: {str(e)}")
-                    # 尝试修复常见的JSON格式问题
-                    try:
-                        # 移除可能的尾随逗号
-                        json_str = re.sub(r',\s*]', ']', json_str)
-                        # 确保所有键都有引号
-                        json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
-                        articles = json.loads(json_str)
-                        logger.info(f"修复后成功解析 {len(articles)} 条新闻")
-                        return articles
-                    except:
-                        logger.error("JSON修复失败")
-                        return []
-            else:
-                logger.error("未在AI响应中找到有效的JSON内容")
-                return []
+                    articles = []
+            
+            if keywords_match:
+                try:
+                    keywords = json.loads(keywords_match.group(0))["keywords"]
+                except:
+                    logger.warning("关键词解析失败")
+            
+            return articles, keywords
+            
         except Exception as e:
             logger.error(f"处理AI响应时出错: {str(e)}")
-            return []
+            return [], {"en": [], "zh": []}
     except Exception as e:
         logger.error(f"AI分析失败: {str(e)}")
-        return []
+        return [], {"en": [], "zh": []}
 
-def create_email_content(articles: List[Dict[str, Any]]) -> str:
+def create_email_content(articles: List[Dict[str, Any]], keywords: Dict[str, List[str]]) -> str:
     """生成HTML邮件内容"""
     html_content = (
         f'<html>'
@@ -183,6 +191,11 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'body {{ margin: 0; padding: 10px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
         f'.container {{ max-width: 100%; margin: 0 auto; padding: 10px; }}'
         f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 15px; text-align: center; font-size: 20px; margin: 0; }}'
+        f'.keywords-section {{ background: #fff; padding: 15px; margin: 15px 0; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
+        f'.keywords-title {{ color: #2c3e50; font-size: 16px; margin: 0 0 10px 0; }}'
+        f'.keywords-list {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }}'
+        f'.keyword-item {{ background: #f0f2f5; padding: 5px 10px; border-radius: 15px; font-size: 13px; color: #2c3e50; }}'
+        f'.keyword-item.zh {{ background: #e8f4f8; color: #2980b9; }}'
         f'.article {{ background: #ffffff; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
         f'.article h3 {{ margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; }}'
         f'.article a {{ color: #2980b9; text-decoration: none; display: block; word-break: break-all; }}'
@@ -204,14 +217,35 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'  .ai-analysis {{ padding: 10px; }}'
         f'  .ai-analysis p {{ font-size: 12px; }}'
         f'  .news-image {{ margin: 8px 0; }}'
+        f'  .keywords-section {{ padding: 12px; }}'
+        f'  .keyword-item {{ font-size: 12px; }}'
         f'}}'
         f'</style>'
         f'</head>'
         f'<body>'
         f'<div class="container">'
-        f'<h2 class="title">Reuters 新闻分析</h2>'
+        f'<h2 class="title">News Summary</h2>'
     )
 
+    # 添加关键词部分
+    if keywords["en"] or keywords["zh"]:
+        html_content += (
+            f'<div class="keywords-section">'
+            f'<h3 class="keywords-title">Key Topics</h3>'
+            f'<ul class="keywords-list">'
+        )
+        
+        # 添加英文关键词
+        for keyword in keywords["en"]:
+            html_content += f'<li class="keyword-item">{keyword}</li>'
+        
+        # 添加中文关键词
+        for keyword in keywords["zh"]:
+            html_content += f'<li class="keyword-item zh">{keyword}</li>'
+        
+        html_content += '</ul></div>'
+
+    # 添加新闻内容
     for article in articles:
         html_content += (
             f'<div class="article">'
@@ -275,7 +309,7 @@ def test_news_fetching() -> None:
         logger.info("成功获取新闻页面内容")
         
         # 使用AI分析新闻
-        articles = analyze_news_with_ai(html_content)
+        articles, keywords = analyze_news_with_ai(html_content)
         if not articles:
             logger.info("未获取到新闻")
             return
@@ -312,13 +346,13 @@ def main() -> None:
         html_content = get_news_content()
         
         # 使用AI分析新闻
-        articles = analyze_news_with_ai(html_content)
+        articles, keywords = analyze_news_with_ai(html_content)
         if not articles:
             logger.info("未获取到新闻，跳过发送邮件")
             return
 
         # 生成邮件内容并发送
-        email_content = create_email_content(articles)
+        email_content = create_email_content(articles, keywords)
         send_email(email_content)
     except Exception as e:
         logger.error(f"执行失败: {str(e)}")

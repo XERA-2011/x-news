@@ -112,7 +112,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'.source {{ color: #7f8c8d; font-size: 14px; }}'
         f'.text-group {{ color: #34495e; }}'
         f'.text-translated {{ margin-top: 8px; }}'
-        f'.text-divider {{ border-left: 3px solid #e8e8e8; margin: 10px 0; padding-left: 10px; }}'
+        f'.text-divider {{ border-left: 3px solid #e8e8e8; margin: 10px 0; padding-left: 10px; font-size: 14px; }}'
         f'@media (max-width: 600px) {{'
         f'  body {{ padding: 10px; }}'
         f'  .container {{ padding: 10px; }}'

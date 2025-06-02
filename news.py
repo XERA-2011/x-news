@@ -45,7 +45,7 @@ class Config:
 
 def get_news_content() -> str:
     """获取Reuters新闻页面内容"""
-    url = 'https://www.reuters.com/world/'
+    url = 'https://www.reuters.com/'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -75,24 +75,43 @@ def get_news_content() -> str:
 def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
     """使用AI分析新闻内容"""
     try:
-        prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取并总结最重要的10条新闻。对于每条新闻，请提供：
-1. 标题
-2. 简要描述
-3. 新闻链接
-4. 主要事件概述
-5. 关键人物和机构
-6. 事件影响
+        prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取所有重要新闻。对于每条新闻，请提供：
+1. 标题（英文原文和中文翻译）
+2. 发布时间（如果有）
+3. 简要描述（英文原文和中文翻译）
+4. 新闻链接
+5. 相关图片链接（如果有的话）
+6. 主要事件概述（英文原文和中文翻译）
+7. 关键人物和机构（英文原文和中文翻译）
+8. 事件影响（英文原文和中文翻译）
 
-请确保只返回最重要的10条新闻，按照重要性排序。请以JSON格式返回，格式如下：
+请特别注意提取h2、h3标题下的重要新闻内容。请以JSON格式返回，格式如下：
 [
     {{
-        "title": "新闻标题",
-        "description": "新闻描述",
+        "title": {{
+            "en": "英文标题",
+            "zh": "中文标题"
+        }},
+        "publish_time": "发布时间（如果有）",
+        "description": {{
+            "en": "英文描述",
+            "zh": "中文描述"
+        }},
         "url": "新闻链接",
+        "image_url": "图片链接（如果有）",
         "analysis": {{
-            "overview": "主要事件概述",
-            "key_entities": "关键人物和机构",
-            "impact": "事件影响"
+            "overview": {{
+                "en": "英文概述",
+                "zh": "中文概述"
+            }},
+            "key_entities": {{
+                "en": "英文关键人物和机构",
+                "zh": "中文关键人物和机构"
+            }},
+            "impact": {{
+                "en": "英文影响",
+                "zh": "中文影响"
+            }}
         }}
     }}
 ]
@@ -100,7 +119,7 @@ def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
 HTML内容：
 {html_content}
 
-请确保返回的是有效的JSON格式，且只包含最重要的10条新闻。"""
+请确保返回的是有效的JSON格式，并按照新闻重要性排序。"""
         
         response = ask_ai(prompt)
         # 解析AI返回的JSON内容
@@ -113,8 +132,6 @@ HTML内容：
             if json_match:
                 json_str = json_match.group(0)
                 articles = json.loads(json_str)
-                # 确保只返回前10条新闻
-                articles = articles[:10]
                 logger.info(f"成功分析 {len(articles)} 条新闻")
                 return articles
             else:
@@ -133,21 +150,34 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'<html>'
         f'<head>'
         f'<meta charset="UTF-8">'
-        f'<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
         f'<style type="text/css">'
         f'* {{ box-sizing: border-box; }}'
-        f'body {{ margin: 0; padding: 15px; background: #f5f5f5; }}'
-        f'.container {{ max-width: 800px; margin: 0 auto; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
-        f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 20px; text-align: center; font-size: 24px; margin: 0; }}'
-        f'.article {{ background: #ffffff; padding: 20px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
-        f'.article h3 {{ margin: 0 0 15px 0; font-size: 18px; line-height: 1.4; }}'
-        f'.article a {{ color: #2980b9; text-decoration: none; display: block; }}'
+        f'body {{ margin: 0; padding: 10px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
+        f'.container {{ max-width: 100%; margin: 0 auto; padding: 10px; }}'
+        f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 15px; text-align: center; font-size: 20px; margin: 0; }}'
+        f'.article {{ background: #ffffff; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
+        f'.article h3 {{ margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; }}'
+        f'.article a {{ color: #2980b9; text-decoration: none; display: block; word-break: break-all; }}'
         f'.article a:hover {{ color: #3498db; text-decoration: none; }}'
-        f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 14px; }}'
-        f'.summary {{ margin: 15px 0; line-height: 1.6; font-size: 14px; }}'
-        f'.ai-analysis {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }}'
-        f'.ai-analysis h4 {{ margin: 0 0 10px 0; color: #2c3e50; }}'
-        f'.ai-analysis p {{ margin: 8px 0; }}'
+        f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; color: #7f8c8d; font-size: 13px; }}'
+        f'.summary {{ margin: 10px 0; line-height: 1.5; font-size: 14px; }}'
+        f'.ai-analysis {{ background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 12px; }}'
+        f'.ai-analysis h4 {{ margin: 0 0 8px 0; color: #2c3e50; font-size: 15px; }}'
+        f'.ai-analysis p {{ margin: 6px 0; font-size: 13px; }}'
+        f'.translation {{ color: #666; font-size: 13px; margin-top: 4px; }}'
+        f'.news-image {{ width: 100%; max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }}'
+        f'.image-container {{ position: relative; width: 100%; margin: 10px 0; }}'
+        f'.publish-time {{ color: #95a5a6; font-size: 12px; margin: 5px 0; }}'
+        f'@media (max-width: 480px) {{'
+        f'  .container {{ padding: 5px; }}'
+        f'  .article {{ padding: 12px; margin-bottom: 15px; }}'
+        f'  .article h3 {{ font-size: 15px; }}'
+        f'  .summary {{ font-size: 13px; }}'
+        f'  .ai-analysis {{ padding: 10px; }}'
+        f'  .ai-analysis p {{ font-size: 12px; }}'
+        f'  .news-image {{ margin: 8px 0; }}'
+        f'}}'
         f'</style>'
         f'</head>'
         f'<body>'
@@ -158,13 +188,32 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
     for article in articles:
         html_content += (
             f'<div class="article">'
-            f'<h3><a href="{article["url"]}" target="_blank">{article["title"]}</a></h3>'
-            f'<div class="summary">{article["description"]}</div>'
+            f'<h3><a href="{article["url"]}" target="_blank">{article["title"]["en"]}</a></h3>'
+            f'<div class="translation">{article["title"]["zh"]}</div>'
+        )
+        
+        # 如果有发布时间，显示时间
+        if article.get("publish_time"):
+            html_content += f'<div class="publish-time">发布时间: {article["publish_time"]}</div>'
+        
+        # 如果有图片，添加图片
+        if article.get("image_url"):
+            html_content += (
+                f'<div class="image-container">'
+                f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" loading="lazy">'
+                f'</div>'
+            )
+            
+        html_content += (
+            f'<div class="summary">{article["description"]["en"]}</div>'
+            f'<div class="translation">{article["description"]["zh"]}</div>'
             f'<div class="ai-analysis">'
-            f'<h4>🤖 AI 分析</h4>'
-            f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]}</p>'
-            f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]}</p>'
-            f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]}</p>'
+            f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]["en"]}</p>'
+            f'<div class="translation">{article["analysis"]["overview"]["zh"]}</div>'
+            f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]["en"]}</p>'
+            f'<div class="translation">{article["analysis"]["key_entities"]["zh"]}</div>'
+            f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]["en"]}</p>'
+            f'<div class="translation">{article["analysis"]["impact"]["zh"]}</div>'
             f'</div>'
             f'</div>'
         )
@@ -208,13 +257,18 @@ def test_news_fetching() -> None:
         logger.info(f"\n成功分析 {len(articles)} 条新闻:")
         for i, article in enumerate(articles, 1):
             logger.info(f"\n新闻 {i}:")
-            logger.info(f"标题: {article['title']}")
-            logger.info(f"描述: {article['description']}")
+            logger.info(f"标题: {article['title']['en']}")
+            logger.info(f"中文标题: {article['title']['zh']}")
+            logger.info(f"英文描述: {article['description']['en']}")
+            logger.info(f"中文描述: {article['description']['zh']}")
             logger.info(f"链接: {article['url']}")
             logger.info("AI分析:")
-            logger.info(f"- 主要事件: {article['analysis']['overview']}")
-            logger.info(f"- 关键人物和机构: {article['analysis']['key_entities']}")
-            logger.info(f"- 事件影响: {article['analysis']['impact']}")
+            logger.info(f"- 英文概述: {article['analysis']['overview']['en']}")
+            logger.info(f"- 中文概述: {article['analysis']['overview']['zh']}")
+            logger.info(f"- 英文关键人物和机构: {article['analysis']['key_entities']['en']}")
+            logger.info(f"- 中文关键人物和机构: {article['analysis']['key_entities']['zh']}")
+            logger.info(f"- 英文影响: {article['analysis']['impact']['en']}")
+            logger.info(f"- 中文影响: {article['analysis']['impact']['zh']}")
             logger.info("-" * 80)
 
     except Exception as e:

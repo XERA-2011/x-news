@@ -119,7 +119,7 @@ def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
 HTML内容：
 {html_content}
 
-请确保返回的是有效的JSON格式，并按照新闻重要性排序。"""
+请确保返回的是有效的JSON格式，并按照新闻重要性排序。每条新闻的JSON对象必须完整，不要截断。"""
         
         response = ask_ai(prompt)
         # 解析AI返回的JSON内容
@@ -131,14 +131,41 @@ HTML内容：
             json_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
-                articles = json.loads(json_str)
-                logger.info(f"成功分析 {len(articles)} 条新闻")
-                return articles
+                try:
+                    articles = json.loads(json_str)
+                    # 验证每个文章对象是否完整
+                    valid_articles = []
+                    for article in articles:
+                        if all(key in article for key in ['title', 'description', 'url', 'analysis']):
+                            valid_articles.append(article)
+                        else:
+                            logger.warning(f"跳过不完整的文章: {article.get('title', {}).get('en', 'Unknown')}")
+                    
+                    if valid_articles:
+                        logger.info(f"成功分析 {len(valid_articles)} 条新闻")
+                        return valid_articles
+                    else:
+                        logger.error("没有找到完整的新闻内容")
+                        return []
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON解析失败: {str(e)}")
+                    # 尝试修复常见的JSON格式问题
+                    try:
+                        # 移除可能的尾随逗号
+                        json_str = re.sub(r',\s*]', ']', json_str)
+                        # 确保所有键都有引号
+                        json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+                        articles = json.loads(json_str)
+                        logger.info(f"修复后成功解析 {len(articles)} 条新闻")
+                        return articles
+                    except:
+                        logger.error("JSON修复失败")
+                        return []
             else:
                 logger.error("未在AI响应中找到有效的JSON内容")
                 return []
-        except json.JSONDecodeError as e:
-            logger.error(f"解析AI返回的JSON失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"处理AI响应时出错: {str(e)}")
             return []
     except Exception as e:
         logger.error(f"AI分析失败: {str(e)}")

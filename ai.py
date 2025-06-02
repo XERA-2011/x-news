@@ -246,7 +246,7 @@ class GeminiAI:
             
             print(f"Using model: {model_name} - {model_info['description']}")
             print(f"Max output tokens: {self.generation_config['max_output_tokens']}")
-            print(f"\n🤖 Question: {prompt}")
+            # print(f"\n🤖 Question: {prompt}") # 提示词可能超级长，这里不打印显示
             print("-" * 80)
             
             # Generate response

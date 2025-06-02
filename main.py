@@ -55,25 +55,24 @@ def get_news() -> List[Dict[str, Any]]:
     url = 'https://newsapi.org/v2/top-headlines'
     # url = 'https://newsapi.org/v2/everything'  # 使用 everything 以支持时间范围查询
     # 设置时间范围
-    days = Config.NEWS_DAYS
-    to_date = datetime.now()
-    from_date = to_date - timedelta(days=days)
+    # days = Config.NEWS_DAYS
+    # to_date = datetime.now()
+    # from_date = to_date - timedelta(days=days)
 
     params = {
         'sources': Config.NEWS_SOURCES,  # top-headlines 只支持 sources 参数
         'pageSize': Config.PAGE_SIZE,
         'apiKey': Config.NEWS_API_KEY,
         'language': 'en',
-        # 'sortBy': 'popularity',
-        'from': from_date.strftime('%Y-%m-%d'),
-        'to': to_date.strftime('%Y-%m-%d')
+        # 'from': from_date.strftime('%Y-%m-%d'),
+        # 'to': to_date.strftime('%Y-%m-%d')
     }
 
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         articles = response.json()['articles']
-        logger.info(f"成功获取 {len(articles)} 条新闻，时间范围：{from_date.strftime('%Y-%m-%d')} 至 {to_date.strftime('%Y-%m-%d')}")
+        logger.info(f"成功获取 {len(articles)} 条新闻")
         return articles
     except requests.Timeout:
         logger.error("获取新闻超时")
@@ -98,22 +97,22 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'* {{ box-sizing: border-box; }}'
         f'body {{ margin: 0; padding: 15px; background: #f5f5f5; }}'
         f'.container {{ max-width: 800px; margin: 0 auto; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
-        f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 20px; text-align: center; font-size: clamp(1.5rem, 4vw, 2rem); margin: 0; }}'
-        f'.sources-wrapper {{ width: 100%; text-align: right; margin: 0 0 0.5em; }}'
-        f'.sources-tag {{ display: inline-flex; align-items: center; gap: 8px; color: #7f8c8d; font-size: 0.9rem; padding: 6px 16px; background: rgba(127,140,141,0.1); border-radius: 20px; }}'
+        f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 20px; text-align: center; font-size: 24px; margin: 0; }}'
+        f'.sources-wrapper {{ width: 100%; text-align: right; margin: 0 0 8px; }}'
+        f'.sources-tag {{ display: inline-flex; align-items: center; gap: 8px; color: #7f8c8d; font-size: 14px; padding: 6px 16px; background: rgba(127,140,141,0.1); border-radius: 20px; }}'
         f'.sources-tag::before {{ content: "📰"; }}'
-        f'.article {{ background: #ffffff; padding: clamp(15px, 3vw, 25px); margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
-        f'.article h3 {{ margin: 0 0 15px 0; font-size: clamp(1.1rem, 3vw, 1.4rem); line-height: 1.4; }}'
+        f'.article {{ background: #ffffff; padding: 20px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
+        f'.article h3 {{ margin: 0 0 15px 0; font-size: 18px; line-height: 1.4; }}'
         f'.article a {{ color: #2980b9; text-decoration: none; display: block; }}'
         f'.article a:hover {{ color: #3498db; text-decoration: none; }}'
-        f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 0.9em; }}'
+        f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 14px; }}'
         f'.article-meta span {{ white-space: nowrap; }}'
-        f'.article-image {{ width: 100%; height: auto; max-height: clamp(200px, 30vh, 300px); object-fit: cover; margin: 12px 0; border-radius: 8px; }}'
-        f'.summary {{ margin: 15px 0; line-height: 1.6; font-size: clamp(0.95rem, 2.5vw, 1.1rem); }}'
-        f'.source {{ color: #7f8c8d; font-size: 0.9em; }}'
-        f'.text-group {{ color: #34495e; }}'  # 统一文字颜色
-        f'.text-translated {{ margin-top: 8px; }}'  # 翻译文本样式
-        f'.text-divider {{ border-left: 3px solid #e8e8e8; margin: 10px 0; padding-left: 10px; }}'  # 分隔线样式
+        f'.article-image {{ width: 100%; height: auto; max-height: 300px; object-fit: cover; margin: 12px 0; border-radius: 8px; }}'
+        f'.summary {{ margin: 15px 0; line-height: 1.6; font-size: 14px; }}'
+        f'.source {{ color: #7f8c8d; font-size: 14px; }}'
+        f'.text-group {{ color: #34495e; }}'
+        f'.text-translated {{ margin-top: 8px; }}'
+        f'.text-divider {{ border-left: 3px solid #e8e8e8; margin: 10px 0; padding-left: 10px; }}'
         f'@media (max-width: 600px) {{'
         f'  body {{ padding: 10px; }}'
         f'  .container {{ padding: 10px; }}'

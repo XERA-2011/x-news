@@ -1,4 +1,4 @@
-name: x-news
+name: x-newsapi
 
 on:
   schedule:
@@ -26,7 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run main
+    - name: Run newsapi
       env:
         # 从 Variables 获取的变量
         PAGE_SIZE: ${{ vars.PAGE_SIZE }}
@@ -41,5 +41,6 @@ jobs:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      run: python main.py
+      run: python news/newsapi.py

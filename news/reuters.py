@@ -185,6 +185,9 @@ HTML内容：
 
 def create_email_content(articles: List[Dict[str, Any]]) -> str:
     """生成HTML邮件内容"""
+    # Sort articles by publish time (newest first)
+    articles.sort(key=lambda x: x.get("publish_time", ""), reverse=True)
+    
     html_content = (
         f'<html>'
         f'<head>'
@@ -221,7 +224,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'</head>'
         f'<body>'
         f'<div class="container">'
-        f'<h2 class="title">News Summary</h2>'
+        f'<h2 class="title">TOP{len(articles)} 新闻摘要</h2>'
     )
 
     # 添加新闻内容

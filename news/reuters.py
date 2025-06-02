@@ -1,5 +1,10 @@
 import os
 import sys
+
+# 将项目根目录添加到 Python 路径
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
 import logging
 import smtplib
 import requests
@@ -7,6 +12,7 @@ from typing import List, Dict, Any
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from datetime import datetime
+
 from utils.ai import ask_ai
 
 # 配置日志

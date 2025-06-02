@@ -240,12 +240,12 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             html_content += f'<div class="publish-time">发布时间: {article["publish_time"]}</div>'
         
         # 如果有图片，添加图片
-        if article.get("image_url"):
-            html_content += (
-                f'<div class="image-container">'
-                f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" loading="lazy">'
-                f'</div>'
-            )
+        # if article.get("image_url"):
+        #     html_content += (
+        #         f'<div class="image-container">'
+        #         f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" loading="lazy">'
+        #         f'</div>'
+        #     )
             
         html_content += (
             f'<div class="summary">{article["description"]["en"]}</div>'

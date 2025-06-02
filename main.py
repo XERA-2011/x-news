@@ -3,10 +3,10 @@ import sys
 import logging
 import smtplib
 import requests
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 from email.mime.text import MIMEText
 from email.utils import formataddr
-from datetime import datetime, timedelta
+from datetime import datetime
 from translate import Translator
 
 # 配置日志

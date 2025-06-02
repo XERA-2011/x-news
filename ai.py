@@ -3,10 +3,6 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-import datetime
-
-# 导入搜索功能
-from search import google_custom_search, format_search_results
 
 load_dotenv()
 
@@ -114,120 +110,22 @@ AVAILABLE_MODELS = {
     },
 }
 
-def get_available_free_models():
-    """
-    获取当前所有可用的免费模型
-    
-    Returns:
-        dict: 以模型名称为键，模型类型为值的字典
-    """
-    try:
-        # 获取API密钥
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            print("未配置 GEMINI_API_KEY")
-            return {}
-            
-        genai.configure(api_key=api_key)
+class GeminiAI:
+    def __init__(self, api_key=None):
+        """
+        Initialize the GeminiAI class
         
-        # 获取所有模型
-        all_models = genai.list_models()
+        Args:
+            api_key (str, optional): Gemini API key. If not provided, will try to get from environment variable.
+        """
+        self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+        if not self.api_key:
+            raise ValueError("Gemini API key is required. Please provide it or set GEMINI_API_KEY environment variable.")
         
-        # 可能的免费模型前缀或标识符
-        free_tier_identifiers = [
-            "bison-001",           # PaLM2 文本/聊天
-            "gecko-001",           # PaLM2 嵌入
-            "gemini-2.5-flash",    # Gemini 2.5 Flash 预览
-            "gemini-2.5-pro",      # Gemini 2.5 Pro 预览
-            "gemini-embedding",    # Gemini 嵌入
-            "gemini-1.5-flash",    # Gemini 1.5 Flash
-            "gemini-1.5-pro",      # Gemini 1.5 Pro
-            "gemini-pro",          # Gemini Pro
-        ]
+        genai.configure(api_key=self.api_key)
         
-        # 按功能分类存储模型
-        model_by_type = {
-            "text": [],
-            "chat": [],
-            "embedding": [],
-            "multimodal": [],
-            "other": []
-        }
-        
-        # 筛选可能的免费模型
-        free_models = []
-        for model in all_models:
-            model_name = model.name
-            # 提取模型实际名称（去除路径前缀）
-            short_name = model_name.split('/')[-1] if '/' in model_name else model_name
-            
-            # 检查是否为可能的免费模型
-            if any(identifier in short_name for identifier in free_tier_identifiers):
-                free_models.append(short_name)
-                
-                # 根据名称或功能分类
-                if "embedding" in short_name:
-                    model_by_type["embedding"].append(short_name)
-                elif "vision" in short_name or "multimodal" in short_name:
-                    model_by_type["multimodal"].append(short_name)
-                elif "chat" in short_name:
-                    model_by_type["chat"].append(short_name)
-                elif any(text_id in short_name for text_id in ["gemini", "pro", "flash", "bison"]):
-                    model_by_type["text"].append(short_name)
-                else:
-                    model_by_type["other"].append(short_name)
-        
-        return model_by_type
-    
-    except Exception as e:
-        print(f"获取模型列表失败: {str(e)}")
-        return {}
-
-
-def list_free_models():
-    """列出并打印所有可用的免费模型"""
-    model_by_type = get_available_free_models()
-    
-    if not any(model_by_type.values()):
-        print("未找到任何可用模型或API调用失败")
-        return
-    
-    print("\n当前可用的免费模型：")
-    print("-" * 80)
-    
-    for model_type, models in model_by_type.items():
-        if models:
-            print(f"\n{model_type.title()} 模型:")
-            for model in sorted(models):
-                print(f"- {model}")
-    
-    print("\n" + "-" * 80)
-    print("注意：模型的分类是根据名称特征推断的，可能不完全准确")
-    print("-" * 80)
-
-
-def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None, enable_search=False, search_results_count=3):
-    """
-    使用 Gemini AI 模型获取对指定问题的回答
-    
-    Args:
-        prompt (str): 向AI提问的内容
-        model_name (str, optional): 使用的模型名称。默认为 "gemini-1.5-flash-latest"。
-            可用模型：gemini-1.5-pro-latest, gemini-1.5-flash-latest, gemini-pro, gemini-pro-vision
-        max_output_tokens (int, optional): 最大输出令牌数。如果不指定，将根据模型自动设置。
-        enable_search (bool, optional): 是否启用网络搜索功能。默认为False。
-        search_results_count (int, optional): 如果启用搜索，指定返回的搜索结果数量。
-    """
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        print("未配置 GEMINI_API_KEY")
-        return
-
-    try:
-        genai.configure(api_key=api_key)
-
-        # 配置安全设置
-        safety_settings = [
+        # Default safety settings
+        self.safety_settings = [
             {
                 "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
                 "threshold": HarmBlockThreshold.BLOCK_NONE,
@@ -245,85 +143,153 @@ def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None,
                 "threshold": HarmBlockThreshold.BLOCK_NONE,
             },
         ]
-
-        # 配置生成参数
-        generation_config = {
+        
+        # Default generation config
+        self.generation_config = {
             "temperature": 0.7,
             "top_p": 0.95,
             "top_k": 60,
             "max_output_tokens": 8192,
         }
 
-        # 获取模型信息（如果存在）
-        model_info = AVAILABLE_MODELS.get(model_name, {
-            "description": "未知模型",
-            "max_tokens": 8192,
-            "supports_tools": True
-        })
+    def get_available_models(self):
+        """
+        Get all available models from the API
         
-        # 根据模型配置修改最大输出令牌数
-        if not max_output_tokens:
-            generation_config["max_output_tokens"] = model_info["max_tokens"]
+        Returns:
+            dict: Dictionary of available models categorized by type
+        """
+        try:
+            all_models = genai.list_models()
             
-        # 创建模型实例
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            generation_config=generation_config,
-            safety_settings=safety_settings
-        )
-        
-        print(f"使用模型: {model_name} - {model_info['description']}")
-        print(f"最大输出令牌数: {generation_config['max_output_tokens']}")
+            model_by_type = {
+                "text": [],
+                "chat": [],
+                "embedding": [],
+                "multimodal": [],
+                "other": []
+            }
+            
+            for model in all_models:
+                model_name = model.name
+                short_name = model_name.split('/')[-1] if '/' in model_name else model_name
+                
+                if "embedding" in short_name:
+                    model_by_type["embedding"].append(short_name)
+                elif "vision" in short_name or "multimodal" in short_name:
+                    model_by_type["multimodal"].append(short_name)
+                elif "chat" in short_name:
+                    model_by_type["chat"].append(short_name)
+                elif any(text_id in short_name for text_id in ["gemini", "pro", "flash", "bison"]):
+                    model_by_type["text"].append(short_name)
+                else:
+                    model_by_type["other"].append(short_name)
+            
+            return model_by_type
+            
+        except Exception as e:
+            print(f"Failed to get model list: {str(e)}")
+            return {}
 
-        print(f"\n🤖 向AI提问: {prompt}")
+    def list_models(self):
+        """Print all available models"""
+        model_by_type = self.get_available_models()
+        
+        if not any(model_by_type.values()):
+            print("No models found or API call failed")
+            return
+        
+        print("\nAvailable Models:")
         print("-" * 80)
         
-        # 如果启用搜索功能，先执行搜索并增强提示
-        if enable_search:
-            print(f"正在进行网络搜索...")
-            search_results = google_custom_search(prompt, search_results_count)
-            
-            if search_results and search_results.get('items'):
-                search_info = format_search_results(search_results, search_results_count)
-                print("搜索完成，找到相关信息",len(search_info))
-                
-                # 构建增强提示
-                enhanced_prompt = f"""我将为你提供一些最新的搜索结果，请基于这些信息和你的知识回答以下问题。
-
-{search_info}
-
-现在请回答这个问题：{prompt}
-
-请综合使用搜索结果和你的知识进行回答，所有回答需要准确且及时。如果搜索结果中有更及时的信息，请以搜索结果为准。请用中文回答。"""
-                prompt = enhanced_prompt
-            else:
-                print("无法获取搜索结果或未找到相关信息")
+        for model_type, models in model_by_type.items():
+            if models:
+                print(f"\n{model_type.title()} Models:")
+                for model in sorted(models):
+                    print(f"- {model}")
         
-        # 生成内容
-        response = model.generate_content(
-            prompt,
-            stream=True
-        )
-
-        full_response = ""
-        for chunk in response:
-            if chunk.text:
-                print(chunk.text, end="", flush=True)
-                full_response += chunk.text
         print("\n" + "-" * 80)
-        
-        return full_response
 
-    except Exception as e:
-        print(f"AI回答失败: {str(e)}")
-        return None
+    def ask(self, prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None, stream=True):
+        """
+        Ask a question to the AI model
+        
+        Args:
+            prompt (str): The question to ask
+            model_name (str, optional): Model name to use. Defaults to "gemini-1.5-flash-latest"
+            max_output_tokens (int, optional): Maximum output tokens. If not specified, will use model's default
+            stream (bool, optional): Whether to stream the response. Defaults to True
+            
+        Returns:
+            str: The AI's response
+        """
+        try:
+            # Get model info
+            model_info = AVAILABLE_MODELS.get(model_name, {
+                "description": "Unknown model",
+                "max_tokens": 8192,
+                "supports_tools": True
+            })
+            
+            # Update generation config
+            if max_output_tokens:
+                self.generation_config["max_output_tokens"] = max_output_tokens
+            else:
+                self.generation_config["max_output_tokens"] = model_info["max_tokens"]
+            
+            # Create model instance
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                generation_config=self.generation_config,
+                safety_settings=self.safety_settings
+            )
+            
+            print(f"Using model: {model_name} - {model_info['description']}")
+            print(f"Max output tokens: {self.generation_config['max_output_tokens']}")
+            print(f"\n🤖 Question: {prompt}")
+            print("-" * 80)
+            
+            # Generate response
+            response = model.generate_content(
+                prompt,
+                stream=stream
+            )
+            
+            if stream:
+                full_response = ""
+                for chunk in response:
+                    if chunk.text:
+                        print(chunk.text, end="", flush=True)
+                        full_response += chunk.text
+                print("\n" + "-" * 80)
+                return full_response
+            else:
+                return response.text
+            
+        except Exception as e:
+            print(f"AI response failed: {str(e)}")
+            return None
+
+def ask_ai(prompt, model_name="gemini-1.5-flash-latest", max_output_tokens=None, stream=True):
+    """
+    Convenience function to ask AI a question
+    
+    Args:
+        prompt (str): The question to ask
+        model_name (str, optional): Model name to use. Defaults to "gemini-1.5-flash-latest"
+        max_output_tokens (int, optional): Maximum output tokens
+        stream (bool, optional): Whether to stream the response. Defaults to True
+        
+    Returns:
+        str: The AI's response
+    """
+    ai = GeminiAI()
+    return ai.ask(prompt, model_name, max_output_tokens, stream)
 
 if __name__ == "__main__":
-    # 列出当前可用的免费模型
-    # list_free_models()
-
-    # 启用联网搜索的示例
-    ask_ai("bloomberg", 
-          model_name="gemini-1.5-flash-latest",
-          enable_search=True,
-          search_results_count=10)
+    # Example usage
+    ai = GeminiAI()
+    ai.list_models()
+    
+    # Example question
+    response = ai.ask("What is the capital of France?")

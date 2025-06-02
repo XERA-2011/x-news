@@ -1,0 +1,45 @@
+name: x-news-ai
+
+on:
+  # schedule:
+  #   - cron: '30 23 * * *'  # 每天UTC时间23:30运行（北京时间7:30）
+    # - cron: '*/30 * * * *'  # 每30分钟执行一次(仅用于测试)
+  workflow_dispatch:  # 保留手动触发选项
+
+permissions:
+  contents: read
+
+jobs:
+  send-news:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run news
+      env:
+        # 从 Variables 获取的变量
+        PAGE_SIZE: ${{ vars.PAGE_SIZE }}
+        TO_EMAIL: ${{ vars.TO_EMAIL }}
+        NEWS_DAYS: ${{ vars.NEWS_DAYS }}
+        NEWS_SOURCES: ${{ vars.NEWS_SOURCES }}
+
+        # 从 Secrets 获取的敏感信息
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        EMAIL_USER: ${{ secrets.EMAIL_USER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      run: python news.py

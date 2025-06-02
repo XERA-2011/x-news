@@ -1,354 +1,248 @@
-# ai.py
 import os
+import sys
+import logging
+import smtplib
+import requests
+from typing import List, Dict, Any
+from email.mime.text import MIMEText
+from email.utils import formataddr
+from datetime import datetime
+from ai import ask_ai
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# 加载环境变量
 from dotenv import load_dotenv
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-import datetime
-
-# 导入搜索功能
-from search import google_custom_search, format_search_results
-
 load_dotenv()
 
-# 可用的Gemini模型列表
-AVAILABLE_MODELS = {
-    # ================ 1.5 系列模型 ================
-    # Flash 模型 (更快速)
-    "gemini-1.5-flash-latest": {
-        "description": "1.5 Flash 模型的最新版本，更快速，适合一般问答",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-flash": {
-        "description": "1.5 Flash 基础模型",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-flash-001": {
-        "description": "1.5 Flash 的 001 版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-flash-002": {
-        "description": "1.5 Flash 的 002 版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-flash-8b": {
-        "description": "1.5 Flash 8B 小型模型",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-flash-8b-latest": {
-        "description": "1.5 Flash 8B 模型的最新版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
+# 配置
+class Config:
+    # 邮件配置
+    SMTP_SERVER: str = os.getenv('SMTP_SERVER', '')
+    SMTP_PORT: int = int(os.getenv('SMTP_PORT', 465))
+    EMAIL_USER: str = os.getenv('EMAIL_USER', '')
+    EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
+    TO_EMAIL: str = os.getenv('TO_EMAIL', '')
+    EMAIL_FROM_NAME: str = os.getenv('EMAIL_FROM_NAME', 'X-NEWS')
     
-    # Pro 模型 (更强大)
-    "gemini-1.5-pro-latest": {
-        "description": "1.5 Pro 模型的最新版本，更强大的推理能力",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-pro": {
-        "description": "1.5 Pro 基础模型",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-pro-001": {
-        "description": "1.5 Pro 的 001 版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-1.5-pro-002": {
-        "description": "1.5 Pro 的 002 版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    
-    # ================ 2.5 系列模型 (预览版) ================
-    "gemini-2.5-flash-preview-05-20": {
-        "description": "2.5 Flash 最新预览版本 (2025-05-20)",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-2.5-pro-preview-05-06": {
-        "description": "2.5 Pro 最新预览版本 (2025-05-06)",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-2.5-flash-preview-tts": {
-        "description": "2.5 Flash 支持文本转语音的预览版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    "gemini-2.5-pro-preview-tts": {
-        "description": "2.5 Pro 支持文本转语音的预览版本",
-        "max_tokens": 8192,
-        "supports_tools": True
-    },
-    
-    # ================ 1.0 系列模型 ================
-    "gemini-pro": {
-        "description": "Gemini 1.0 Pro 模型，支持文本处理",
-        "max_tokens": 2048,
-        "supports_tools": True
-    },
-    "gemini-pro-vision": {
-        "description": "Gemini 1.0 Pro Vision 模型，支持图像处理",
-        "max_tokens": 2048,
-        "supports_tools": False
-    },
-    
-    # ================ 嵌入模型 ================
-    "embedding-gecko-001": {
-        "description": "PaLM 2 嵌入模型",
-        "max_tokens": 768,  # 嵌入维度
-        "supports_tools": False
-    },
-    "gemini-embedding-exp": {
-        "description": "Gemini 嵌入模型（实验版）",
-        "max_tokens": 768,  # 嵌入维度可能更高
-        "supports_tools": False
-    },
-}
+    @classmethod
+    def validate(cls) -> bool:
+        """验证必要的配置是否存在"""
+        required_fields = ['SMTP_SERVER', 'EMAIL_USER', 'EMAIL_PASSWORD', 'TO_EMAIL']
+        for field in required_fields:
+            if not getattr(cls, field):
+                logger.error(f"缺少必要的配置: {field}")
+                return False
+        return True
 
-def get_available_free_models():
-    """
-    获取当前所有可用的免费模型
+def get_news_content() -> str:
+    """获取Reuters新闻页面内容"""
+    url = 'https://www.reuters.com/world/'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1'
+    }
     
-    Returns:
-        dict: 以模型名称为键，模型类型为值的字典
-    """
     try:
-        # 获取API密钥
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            print("未配置 GEMINI_API_KEY")
-            return {}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return response.text
+    except requests.Timeout:
+        logger.error("获取新闻超时")
+        raise
+    except requests.RequestException as e:
+        logger.error(f"获取新闻失败: {str(e)}")
+        raise
+
+def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
+    """使用AI分析新闻内容"""
+    try:
+        prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取并总结最重要的10条新闻。对于每条新闻，请提供：
+1. 标题
+2. 简要描述
+3. 新闻链接
+4. 主要事件概述
+5. 关键人物和机构
+6. 事件影响
+
+请确保只返回最重要的10条新闻，按照重要性排序。请以JSON格式返回，格式如下：
+[
+    {{
+        "title": "新闻标题",
+        "description": "新闻描述",
+        "url": "新闻链接",
+        "analysis": {{
+            "overview": "主要事件概述",
+            "key_entities": "关键人物和机构",
+            "impact": "事件影响"
+        }}
+    }}
+]
+
+HTML内容：
+{html_content}
+
+请确保返回的是有效的JSON格式，且只包含最重要的10条新闻。"""
+        
+        response = ask_ai(prompt)
+        # 解析AI返回的JSON内容
+        try:
+            import json
+            import re
             
-        genai.configure(api_key=api_key)
-        
-        # 获取所有模型
-        all_models = genai.list_models()
-        
-        # 可能的免费模型前缀或标识符
-        free_tier_identifiers = [
-            "bison-001",           # PaLM2 文本/聊天
-            "gecko-001",           # PaLM2 嵌入
-            "gemini-2.5-flash",    # Gemini 2.5 Flash 预览
-            "gemini-2.5-pro",      # Gemini 2.5 Pro 预览
-            "gemini-embedding",    # Gemini 嵌入
-            "gemini-1.5-flash",    # Gemini 1.5 Flash
-            "gemini-1.5-pro",      # Gemini 1.5 Pro
-            "gemini-pro",          # Gemini Pro
-        ]
-        
-        # 按功能分类存储模型
-        model_by_type = {
-            "text": [],
-            "chat": [],
-            "embedding": [],
-            "multimodal": [],
-            "other": []
-        }
-        
-        # 筛选可能的免费模型
-        free_models = []
-        for model in all_models:
-            model_name = model.name
-            # 提取模型实际名称（去除路径前缀）
-            short_name = model_name.split('/')[-1] if '/' in model_name else model_name
-            
-            # 检查是否为可能的免费模型
-            if any(identifier in short_name for identifier in free_tier_identifiers):
-                free_models.append(short_name)
-                
-                # 根据名称或功能分类
-                if "embedding" in short_name:
-                    model_by_type["embedding"].append(short_name)
-                elif "vision" in short_name or "multimodal" in short_name:
-                    model_by_type["multimodal"].append(short_name)
-                elif "chat" in short_name:
-                    model_by_type["chat"].append(short_name)
-                elif any(text_id in short_name for text_id in ["gemini", "pro", "flash", "bison"]):
-                    model_by_type["text"].append(short_name)
-                else:
-                    model_by_type["other"].append(short_name)
-        
-        return model_by_type
-    
+            # 尝试提取JSON内容
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                articles = json.loads(json_str)
+                # 确保只返回前10条新闻
+                articles = articles[:10]
+                logger.info(f"成功分析 {len(articles)} 条新闻")
+                return articles
+            else:
+                logger.error("未在AI响应中找到有效的JSON内容")
+                return []
+        except json.JSONDecodeError as e:
+            logger.error(f"解析AI返回的JSON失败: {str(e)}")
+            return []
     except Exception as e:
-        print(f"获取模型列表失败: {str(e)}")
-        return {}
+        logger.error(f"AI分析失败: {str(e)}")
+        return []
 
+def create_email_content(articles: List[Dict[str, Any]]) -> str:
+    """生成HTML邮件内容"""
+    html_content = (
+        f'<html>'
+        f'<head>'
+        f'<meta charset="UTF-8">'
+        f'<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<style type="text/css">'
+        f'* {{ box-sizing: border-box; }}'
+        f'body {{ margin: 0; padding: 15px; background: #f5f5f5; }}'
+        f'.container {{ max-width: 800px; margin: 0 auto; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
+        f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 20px; text-align: center; font-size: 24px; margin: 0; }}'
+        f'.article {{ background: #ffffff; padding: 20px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
+        f'.article h3 {{ margin: 0 0 15px 0; font-size: 18px; line-height: 1.4; }}'
+        f'.article a {{ color: #2980b9; text-decoration: none; display: block; }}'
+        f'.article a:hover {{ color: #3498db; text-decoration: none; }}'
+        f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; color: #7f8c8d; font-size: 14px; }}'
+        f'.summary {{ margin: 15px 0; line-height: 1.6; font-size: 14px; }}'
+        f'.ai-analysis {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }}'
+        f'.ai-analysis h4 {{ margin: 0 0 10px 0; color: #2c3e50; }}'
+        f'.ai-analysis p {{ margin: 8px 0; }}'
+        f'</style>'
+        f'</head>'
+        f'<body>'
+        f'<div class="container">'
+        f'<h2 class="title">Reuters 新闻分析</h2>'
+    )
 
-def list_free_models():
-    """列出并打印所有可用的免费模型"""
-    model_by_type = get_available_free_models()
-    
-    if not any(model_by_type.values()):
-        print("未找到任何可用模型或API调用失败")
-        return
-    
-    print("\n当前可用的免费模型：")
-    print("-" * 80)
-    
-    for model_type, models in model_by_type.items():
-        if models:
-            print(f"\n{model_type.title()} 模型:")
-            for model in sorted(models):
-                print(f"- {model}")
-    
-    print("\n" + "-" * 80)
-    print("注意：模型的分类是根据名称特征推断的，可能不完全准确")
-    print("-" * 80)
-
-
-def get_news(model_name="gemini-1.5-flash-latest", max_output_tokens=None, search_results_count=10):
-    """
-    使用 Gemini AI 模型获取最新的全球新闻
-    
-    Args:
-        model_name (str, optional): 使用的模型名称。默认为 "gemini-1.5-flash-latest"。
-        max_output_tokens (int, optional): 最大输出令牌数。如果不指定，将根据模型自动设置。
-        search_results_count (int, optional): 返回的搜索结果数量。
-    """
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        print("未配置 GEMINI_API_KEY")
-        return
-
-    try:
-        genai.configure(api_key=api_key)
-
-        # 配置安全设置
-        safety_settings = [
-            {
-                "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
-                "threshold": HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                "threshold": HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                "threshold": HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                "threshold": HarmBlockThreshold.BLOCK_NONE,
-            },
-        ]
-
-        # 配置生成参数
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 60,
-            "max_output_tokens": 8192,
-        }
-
-        # 获取模型信息（如果存在）
-        model_info = AVAILABLE_MODELS.get(model_name, {
-            "description": "未知模型",
-            "max_tokens": 8192,
-            "supports_tools": True
-        })
-        
-        # 根据模型配置修改最大输出令牌数
-        if not max_output_tokens:
-            generation_config["max_output_tokens"] = model_info["max_tokens"]
-            
-        # 创建模型实例
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            generation_config=generation_config,
-            safety_settings=safety_settings
+    for article in articles:
+        html_content += (
+            f'<div class="article">'
+            f'<h3><a href="{article["url"]}" target="_blank">{article["title"]}</a></h3>'
+            f'<div class="summary">{article["description"]}</div>'
+            f'<div class="ai-analysis">'
+            f'<h4>🤖 AI 分析</h4>'
+            f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]}</p>'
+            f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]}</p>'
+            f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]}</p>'
+            f'</div>'
+            f'</div>'
         )
+
+    html_content += '</div></body></html>'
+    return html_content
+
+def send_email(content: str) -> None:
+    """通过SMTP发送邮件"""
+    msg = MIMEText(content, 'html', 'utf-8')
+    msg['Subject'] = f"Reuters新闻分析 {datetime.now().strftime('%Y-%m-%d')}"
+    msg['From'] = formataddr((Config.EMAIL_FROM_NAME, Config.EMAIL_USER))
+    msg['To'] = Config.TO_EMAIL
+
+    try:
+        with smtplib.SMTP_SSL(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=10) as server:
+            server.login(Config.EMAIL_USER, Config.EMAIL_PASSWORD)
+            server.send_message(msg)
+        logger.info("邮件发送成功")
+    except smtplib.SMTPException as e:
+        logger.error(f"邮件发送失败: {str(e)}")
+        raise
+
+def test_news_fetching() -> None:
+    """测试获取新闻和分析功能"""
+    try:
+        if not Config.validate():
+            raise SystemExit(1)
+
+        # 获取新闻页面内容
+        html_content = get_news_content()
+        logger.info("成功获取新闻页面内容")
         
-        print(f"使用模型: {model_name} - {model_info['description']}")
-        print(f"最大输出令牌数: {generation_config['max_output_tokens']}")
+        # 使用AI分析新闻
+        articles = analyze_news_with_ai(html_content)
+        if not articles:
+            logger.info("未获取到新闻")
+            return
 
-        # 计算过去24小时的日期范围
-        today = datetime.datetime.now()
-        yesterday = (today - datetime.timedelta(hours=24)).strftime("%Y-%m-%d")
-        today_str = today.strftime("%Y-%m-%d")
-        date_range = f"after:{yesterday} before:{today_str}"
-        
-        # 从环境变量获取新闻源
-        news_sources = os.getenv('NEWS_SOURCES', 'axios,reuters,bloomberg,xinhua-net,time')
-        sources_list = news_sources.split(',')
-        sources_query = ' OR '.join([f'site:{source}.com' for source in sources_list])
-        
-        # 构建新闻搜索查询
-        search_query = f"重要新闻 {date_range} {sources_query}"
-        print(f"搜索全球新闻 (最近24小时): '{search_query}'")
-        print(f"请求获取 {search_results_count} 条新闻...")
-        
-        # 搜索新闻
-        print(f"搜索新闻...")
-        search_results = google_custom_search(search_query, search_results_count)
-        
-        # 整合搜索结果
-        if search_results and search_results.get('items'):
-            actual_results_count = len(search_results.get('items', []))
-            print(f"实际获取到 {actual_results_count} 条新闻")
-            
-            # 获取当前时间
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # 构建数据来源信息
-            sources_info = "、".join(sources_list)
-            
-            search_info = format_search_results(search_results, actual_results_count)
-            print("搜索完成，找到相关信息")
-            
-            # 构建新闻分析提示
-            prompt = f"""你是一位专业的新闻分析师。我将为你提供一些最近24小时内的新闻搜索结果，你的任务是整合这些信息并提取当前最重要的全球新闻事件。
-
-数据来源：{sources_info}
-数据时间：{current_time}
-新闻数量：{actual_results_count}条
-
-这是最近24小时的新闻搜索结果：
-{search_info}
-
-请基于以上搜索结果和你的知识，提供一份全面的全球新闻报告。
-
-要求：
-1. 分析并提取最近24小时内最重要的全球新闻事件
-2. 按重要性排序列出新闻条目，根据最新搜索结果确保内容的时效性
-3. 每条新闻简要描述具体事件和影响
-4. 尽量提供新闻发生的大致时间或日期
-5. 如果搜索结果中没有足够信息，请基于你的知识来补充可能的重要新闻
-
-请确保你的回答清晰、准确、客观、有条理。"""
-            
-            # 生成内容
-            response = model.generate_content(
-                prompt,
-                stream=True
-            )
-
-            full_response = ""
-            for chunk in response:
-                if chunk.text:
-                    print(chunk.text, end="", flush=True)
-                    full_response += chunk.text
-            print("\n" + "-" * 80)
-            
-            return full_response
-        else:
-            print("无法获取搜索结果或未找到相关信息")
-            return None
+        # 打印分析结果
+        logger.info(f"\n成功分析 {len(articles)} 条新闻:")
+        for i, article in enumerate(articles, 1):
+            logger.info(f"\n新闻 {i}:")
+            logger.info(f"标题: {article['title']}")
+            logger.info(f"描述: {article['description']}")
+            logger.info(f"链接: {article['url']}")
+            logger.info("AI分析:")
+            logger.info(f"- 主要事件: {article['analysis']['overview']}")
+            logger.info(f"- 关键人物和机构: {article['analysis']['key_entities']}")
+            logger.info(f"- 事件影响: {article['analysis']['impact']}")
+            logger.info("-" * 80)
 
     except Exception as e:
-        print(f"获取新闻失败: {str(e)}")
-        return None
+        logger.error(f"测试执行失败: {str(e)}")
+        raise SystemExit(1)
+
+def main() -> None:
+    """主函数"""
+    try:
+        if not Config.validate():
+            raise SystemExit(1)
+
+        # 获取新闻页面内容
+        html_content = get_news_content()
+        
+        # 使用AI分析新闻
+        articles = analyze_news_with_ai(html_content)
+        if not articles:
+            logger.info("未获取到新闻，跳过发送邮件")
+            return
+
+        # 生成邮件内容并发送
+        email_content = create_email_content(articles)
+        send_email(email_content)
+    except Exception as e:
+        logger.error(f"执行失败: {str(e)}")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
-    # 获取最新新闻
-    get_news(search_results_count=10)
+    main()
+    # test_news_fetching()

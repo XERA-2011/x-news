@@ -1,5 +1,6 @@
 import os
 import sys
+from bs4 import BeautifulSoup  # 新增
 
 # 将项目根目录添加到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,7 +71,21 @@ def get_news_content() -> str:
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-        return response.text
+        html = response.text
+        # 优化：先提取 <main> 标签，再在 <main> 内查找 <section>
+        soup = BeautifulSoup(html, 'html.parser')
+        main_tag = soup.find('main')
+        if main_tag:
+            # section_tag = main_tag.find('section')
+            # if section_tag:
+            #     section_html = str(section_tag)
+            # else:
+                section_html = str(main_tag)
+        else:
+            # 降级为 <body> 或全文
+            body_tag = soup.find('body')
+            section_html = str(body_tag) if body_tag else html
+        return section_html
     except requests.Timeout:
         logger.error("获取新闻超时")
         raise
@@ -79,9 +94,9 @@ def get_news_content() -> str:
         raise
 
 def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
-    """使用AI分析新闻内容"""
+    """使用AI分析新闻内容，返回前10条最重要的新闻"""
     try:
-        prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取所有重要新闻。对于每条新闻，请提供：
+        prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取最重要的前10条新闻。请按重要性排序，对于每条新闻，请提供：
 1. 标题（英文原文和中文翻译）
 2. 发布时间（如果有）
 3. 简要描述（英文原文和中文翻译）

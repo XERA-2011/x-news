@@ -250,14 +250,14 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         html_content += (
             f'<div class="summary">{article["description"]["en"]}</div>'
             f'<div class="translation">{article["description"]["zh"]}</div>'
-            # f'<div class="ai-analysis">'
-            # f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]["en"]}</p>'
-            # f'<div class="translation">{article["analysis"]["overview"]["zh"]}</div>'
+            f'<div class="ai-analysis">'
+            f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]["en"]}</p>'
+            f'<div class="translation">{article["analysis"]["overview"]["zh"]}</div>'
             # f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]["en"]}</p>'
             # f'<div class="translation">{article["analysis"]["key_entities"]["zh"]}</div>'
-            # f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]["en"]}</p>'
-            # f'<div class="translation">{article["analysis"]["impact"]["zh"]}</div>'
-            # f'</div>'
+            f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]["en"]}</p>'
+            f'<div class="translation">{article["analysis"]["impact"]["zh"]}</div>'
+            f'</div>'
             f'</div>'
         )
 

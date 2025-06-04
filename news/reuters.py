@@ -244,9 +244,12 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
 
     # 添加新闻内容
     for article in articles:
+        processed_url = article["url"]
+        if not processed_url.startswith(("http://", "https://")):
+            processed_url = f"https://www.reuters.com/{processed_url.lstrip('/')}"
         html_content += (
             f'<div class="article">'
-            f'<h3><a href="{article["url"]}" target="_blank">{article["title"]["en"]}</a></h3>'
+            f'<h3><a href="{processed_url}" target="_blank">{article["title"]["en"]}</a></h3>'
             f'<div class="translation">{article["title"]["zh"]}</div>'
         )
         
@@ -255,12 +258,12 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             html_content += f'<div class="publish-time">发布时间: {article["publish_time"]}</div>'
         
         # 如果有图片，添加图片
-        # if article.get("image_url"):
-        #     html_content += (
-        #         f'<div class="image-container">'
-        #         f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" loading="lazy">'
-        #         f'</div>'
-        #     )
+        if article.get("image_url"):
+            html_content += (
+                f'<div class="image-container">'
+                f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" style="width: 100%; max-width: 550px; height: auto; display: block; border: 0;" loading="lazy">'
+                f'</div>'
+            )
             
         html_content += (
             f'<div class="summary">{article["description"]["en"]}</div>'

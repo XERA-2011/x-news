@@ -268,7 +268,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'<style type="text/css">'
         f'* {{ box-sizing: border-box; }}'
         f'body {{ margin: 0; padding: 10px; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}'
-        f'.container {{ max-width: 100%; margin: 0 auto; padding: 10px; }}'
+        f'.container {{ max-width: 800px; width: 100%; margin: 0 auto; padding: 20px; }}'
         f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 15px; text-align: center; font-size: 20px; margin: 0; }}'
         f'.article {{ background: #ffffff; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
         f'.article h3 {{ margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; }}'
@@ -283,14 +283,23 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'.news-image {{ width: 100%; max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }}'
         f'.image-container {{ position: relative; width: 100%; margin: 10px 0; }}'
         f'.publish-time {{ color: #95a5a6; font-size: 12px; margin: 5px 0; }}'
-        f'@media (max-width: 480px) {{'
-        f'  .container {{ padding: 5px; }}'
+        f'@media screen and (max-width: 768px) {{'
+        f'  .container {{ padding: 15px; }}'
+        f'  .article {{ padding: 15px; margin-bottom: 20px; }}'
+        f'  .article h3 {{ font-size: 16px; }}'
+        f'  .summary {{ font-size: 14px; }}'
+        f'  .ai-analysis {{ padding: 12px; }}'
+        f'  .ai-analysis p {{ font-size: 13px; }}'
+        f'  .news-image {{ width: 100% !important; max-width: 100% !important; margin: 10px auto; }}'
+        f'}}'
+        f'@media screen and (max-width: 480px) {{'
+        f'  .container {{ padding: 10px; }}'
         f'  .article {{ padding: 12px; margin-bottom: 15px; }}'
         f'  .article h3 {{ font-size: 15px; }}'
         f'  .summary {{ font-size: 13px; }}'
         f'  .ai-analysis {{ padding: 10px; }}'
         f'  .ai-analysis p {{ font-size: 12px; }}'
-        f'  .news-image {{ margin: 8px 0; }}'
+        f'  .news-image {{ margin: 8px auto; }}'
         f'}}'
         f'</style>'
         f'</head>'
@@ -319,10 +328,9 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         
         # 如果有图片，添加图片
         if article.get("image_url"):
-            html_content += (
-                f'<div class="image-container">'
-                f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" style="width: 100%; max-width: 550px; height: auto; display: block; border: 0;" loading="lazy">'
-                f'</div>'
+            html_content += (            f'<div class="image-container">'
+            f'<img src="{article["image_url"]}" alt="{article["title"]["en"]}" class="news-image" style="width: 100%; max-width: 700px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" loading="lazy">'
+            f'</div>'
             )
             
         html_content += (

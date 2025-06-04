@@ -1,6 +1,9 @@
 import os
 import sys
+import re
 from bs4 import BeautifulSoup  # 新增
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
 
 # 将项目根目录添加到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -198,6 +201,60 @@ HTML内容：
         logger.error(f"AI分析失败: {str(e)}")
         return []
 
+def format_publish_time(time_str: Any) -> str:
+    if not time_str or not isinstance(time_str, str):
+        return "N/A" # Or handle as per requirements, e.g., return ""
+
+    target_format = "%Y-%m-%d %H:%M"
+    
+    # 1. Try parsing ISO 8601 formats (most common in APIs and modern systems)
+    try:
+        parsable_str = time_str
+        # Handle cases where space is used instead of 'T' in ISO-like dates
+        if 'T' not in parsable_str and ' ' in parsable_str:
+            if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[\+\-]\d{2}:?\d{2})?$", parsable_str):
+                parsable_str = parsable_str.replace(' ', 'T', 1)
+        
+        if 'Z' in parsable_str or '+' in parsable_str or (len(parsable_str) > 10 and '-' in parsable_str[10:] and parsable_str.count(':') >= 2):
+            dt_obj = datetime.fromisoformat(parsable_str.replace('Z', '+00:00'))
+            return dt_obj.strftime(target_format)
+    except ValueError:
+        pass
+
+    # 2. Try parsing "ago" relative time strings
+    ago_match = re.match(r"(\d+)\s+(minute|min|hour|hr|day)s?\s+ago", time_str, re.IGNORECASE)
+    if ago_match:
+        value = int(ago_match.group(1))
+        unit_keyword = ago_match.group(2).lower()
+        now = datetime.now()
+
+        if unit_keyword.startswith("min"):
+            delta = timedelta(minutes=value)
+        elif unit_keyword.startswith("h"):
+            delta = timedelta(hours=value)
+        elif unit_keyword.startswith("day"):
+            delta = timedelta(days=value)
+        else: 
+            return time_str
+
+        publish_dt = now - delta
+        return publish_dt.strftime(target_format)
+
+    # 3. Try parsing other common absolute date/time formats using strptime
+    common_abs_formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%a, %d %b %Y %H:%M:%S %Z",
+    ]
+    for fmt in common_abs_formats:
+        try:
+            dt_obj = datetime.strptime(time_str, fmt)
+            return dt_obj.strftime(target_format)
+        except ValueError:
+            continue
+            
+    return time_str
+
 def create_email_content(articles: List[Dict[str, Any]]) -> str:
     """生成HTML邮件内容"""
     # Sort articles by publish time (newest first)
@@ -253,9 +310,12 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             f'<div class="translation">{article["title"]["zh"]}</div>'
         )
         
-        # 如果有发布时间，显示时间
-        if article.get("publish_time"):
-            html_content += f'<div class="publish-time">发布时间: {article["publish_time"]}</div>'
+        # 如果有发布时间，格式化并显示时间
+        publish_time_raw = article.get("publish_time")
+        if publish_time_raw:
+            # Ensure the input to format_publish_time is a string
+            formatted_time = format_publish_time(str(publish_time_raw))
+            html_content += f'<div class="publish-time">发布时间: {formatted_time}</div>'
         
         # 如果有图片，添加图片
         if article.get("image_url"):

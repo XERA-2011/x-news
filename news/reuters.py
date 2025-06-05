@@ -203,11 +203,25 @@ HTML内容：
 
 def format_publish_time(time_str: Any) -> str:
     if not time_str or not isinstance(time_str, str):
-        return "N/A" # Or handle as per requirements, e.g., return ""
+        return "N/A"
 
     target_format = "%Y-%m-%d %H:%M"
     
-    # 1. Try parsing ISO 8601 formats (most common in APIs and modern systems)
+    # 1. 处理英文月份日期格式 (如 "June 4, 2025")
+    try:
+        # 匹配 "Month Day, Year" 格式
+        english_date_pattern = r"([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})"
+        match = re.match(english_date_pattern, time_str)
+        if match:
+            month, day, year = match.groups()
+            # 将日期转换为 datetime 对象
+            dt_obj = datetime.strptime(f"{month} {day} {year}", "%B %d %Y")
+            # 由于没有具体时间，默认设置为当天 00:00
+            return dt_obj.strftime("%Y-%m-%d 00:00")
+    except ValueError:
+        pass
+
+    # 2. Try parsing ISO 8601 formats (most common in APIs and modern systems)
     try:
         parsable_str = time_str
         # Handle cases where space is used instead of 'T' in ISO-like dates
@@ -221,7 +235,7 @@ def format_publish_time(time_str: Any) -> str:
     except ValueError:
         pass
 
-    # 2. Try parsing "ago" relative time strings
+    # 3. Try parsing "ago" relative time strings
     ago_match = re.match(r"(\d+)\s+(minute|min|hour|hr|day)s?\s+ago", time_str, re.IGNORECASE)
     if ago_match:
         value = int(ago_match.group(1))
@@ -240,15 +254,20 @@ def format_publish_time(time_str: Any) -> str:
         publish_dt = now - delta
         return publish_dt.strftime(target_format)
 
-    # 3. Try parsing other common absolute date/time formats using strptime
+    # 4. Try parsing other common absolute date/time formats using strptime
     common_abs_formats = [
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M",
         "%a, %d %b %Y %H:%M:%S %Z",
+        "%B %d, %Y",  # 添加对 "Month Day, Year" 格式的支持
+        "%b %d, %Y",  # 添加对缩写月份格式的支持
     ]
     for fmt in common_abs_formats:
         try:
             dt_obj = datetime.strptime(time_str, fmt)
+            if fmt in ["%B %d, %Y", "%b %d, %Y"]:
+                # 对于没有时间的日期格式，默认使用当天 00:00
+                return dt_obj.strftime("%Y-%m-%d 00:00")
             return dt_obj.strftime(target_format)
         except ValueError:
             continue

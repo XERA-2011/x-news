@@ -207,21 +207,41 @@ def format_publish_time(time_str: Any) -> str:
 
     target_format = "%Y-%m-%d %H:%M"
     
-    # 1. 处理英文月份日期格式 (如 "June 4, 2025")
+    # 1. 处理 UTC 时间格式 (如 "3:16 AM UTC")
     try:
-        # 匹配 "Month Day, Year" 格式
+        utc_pattern = r"(\d{1,2}):(\d{2})\s*(AM|PM)\s*UTC"
+        utc_match = re.match(utc_pattern, time_str)
+        if utc_match:
+            hour, minute, meridiem = utc_match.groups()
+            hour = int(hour)
+            # 转换12小时制到24小时制
+            if meridiem.upper() == "PM" and hour < 12:
+                hour += 12
+            elif meridiem.upper() == "AM" and hour == 12:
+                hour = 0
+                
+            # 创建今天的UTC时间
+            today = datetime.now().date()
+            utc_time = datetime(today.year, today.month, today.day, hour, int(minute))
+            
+            # 转换UTC时间到本地时间
+            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone()
+            return local_time.strftime(target_format)
+    except ValueError:
+        pass
+
+    # 2. 处理英文月份日期格式 (如 "June 4, 2025")
+    try:
         english_date_pattern = r"([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})"
         match = re.match(english_date_pattern, time_str)
         if match:
             month, day, year = match.groups()
-            # 将日期转换为 datetime 对象
             dt_obj = datetime.strptime(f"{month} {day} {year}", "%B %d %Y")
-            # 由于没有具体时间，默认设置为当天 00:00
             return dt_obj.strftime("%Y-%m-%d 00:00")
     except ValueError:
         pass
 
-    # 2. Try parsing ISO 8601 formats (most common in APIs and modern systems)
+    # 3. Try parsing ISO 8601 formats (most common in APIs and modern systems)
     try:
         parsable_str = time_str
         # Handle cases where space is used instead of 'T' in ISO-like dates
@@ -235,7 +255,7 @@ def format_publish_time(time_str: Any) -> str:
     except ValueError:
         pass
 
-    # 3. Try parsing "ago" relative time strings
+    # 4. Try parsing "ago" relative time strings
     ago_match = re.match(r"(\d+)\s+(minute|min|hour|hr|day)s?\s+ago", time_str, re.IGNORECASE)
     if ago_match:
         value = int(ago_match.group(1))
@@ -254,7 +274,7 @@ def format_publish_time(time_str: Any) -> str:
         publish_dt = now - delta
         return publish_dt.strftime(target_format)
 
-    # 4. Try parsing other common absolute date/time formats using strptime
+    # 5. Try parsing other common absolute date/time formats using strptime
     common_abs_formats = [
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M",

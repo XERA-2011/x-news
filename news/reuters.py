@@ -4,6 +4,7 @@ import re
 from bs4 import BeautifulSoup  # 新增
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+import pytz  # 添加 pytz 导入
 
 # 将项目根目录添加到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -224,8 +225,11 @@ def format_publish_time(time_str: Any) -> str:
             today = datetime.now().date()
             utc_time = datetime(today.year, today.month, today.day, hour, int(minute))
             
-            # 转换UTC时间到本地时间
-            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone()
+            # 使用 pytz 转换UTC时间到本地时间
+            utc = pytz.UTC
+            local_tz = pytz.timezone('Asia/Shanghai')  # 使用中国时区
+            utc_time = utc.localize(utc_time)
+            local_time = utc_time.astimezone(local_tz)
             return local_time.strftime(target_format)
     except ValueError:
         pass

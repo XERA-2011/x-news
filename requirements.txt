@@ -4,3 +4,4 @@ translate==3.6.1
 google-generativeai==0.8.5
 googlesearch-python==1.3.0
 beautifulsoup4==4.13.4
+pytz==2025.2

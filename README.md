@@ -9,6 +9,12 @@
 - `Python SMTP` 发送邮件
 - `Github Actions` 每日执行
 
+## 注意
+- 本项目仅供学习和研究使用，请勿用于商业用途。
+- 推荐使用：官方的邮件订阅新闻
+- [Reuters 邮件订阅](https://www.reuters.com/newsletters/)
+- [Bloomberg 中文版 邮件订阅](https://www.bloomberg.com/account/newsletters/china-markets?taid=6840d8afb471da0001cc82f5&utm_campaign=trueanthem&utm_content=business&utm_medium=social&utm_source=twitter)
+
 ## 开发指南
 
 ### 环境准备

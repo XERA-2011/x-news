@@ -8,16 +8,16 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 from typing import Any, Dict, List
 
+# 将项目根目录添加到 Python 路径
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
 import pytz
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 from utils.ai import ask_ai
-
-# 将项目根目录添加到 Python 路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(project_root)
 
 # 配置日志
 logging.basicConfig(

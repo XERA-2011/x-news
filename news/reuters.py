@@ -1,24 +1,23 @@
+import logging
 import os
-import sys
 import re
-from bs4 import BeautifulSoup  # 新增
+import smtplib
+import sys
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
-import pytz  # 添加 pytz 导入
+from email.mime.text import MIMEText
+from email.utils import formataddr
+from typing import Any, Dict, List
+
+import pytz
+import requests
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+from utils.ai import ask_ai
 
 # 将项目根目录添加到 Python 路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-
-import logging
-import smtplib
-import requests
-from typing import List, Dict, Any
-from email.mime.text import MIMEText
-from email.utils import formataddr
-from datetime import datetime
-
-from utils.ai import ask_ai
 
 # 配置日志
 logging.basicConfig(
@@ -31,7 +30,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 加载环境变量
-from dotenv import load_dotenv
 load_dotenv()
 
 # 配置

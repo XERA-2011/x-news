@@ -5,7 +5,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.1%2B-blue)]()
 
 - [News API](https://newsapi.org/) 新闻获取
-- [Gemini](https://ai.google.dev/)
+- [Gemini](https://ai.google.dev/) 内容总结，中英文显示
 - `Python SMTP` 发送邮件
 - `Github Actions` 每日执行
 

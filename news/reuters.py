@@ -513,8 +513,10 @@ def main() -> None:
         
         # 使用AI分析新闻
         articles = analyze_news_with_ai(html_content)
-        if not articles:
-            logger.info("未获取到新闻，跳过发送邮件")
+        
+        # 检查AI分析是否成功
+        if not articles or (articles and "AI analysis failed" in articles[0].get("title", {}).get("en", "")):
+            logger.info("AI分析失败或未获取到有效新闻，跳过发送邮件")
             return
 
         # 生成邮件内容并发送

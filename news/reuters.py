@@ -146,52 +146,112 @@ HTML内容：
         
         response = ask_ai(prompt)
         
+        # 新增：防止 response 为 None、非字符串或空字符串
+        if not isinstance(response, str) or not response.strip():
+            logger.error(f"AI返回结果无效（None、非字符串或空字符串），实际返回: {repr(response)}")
+            # 返回一条伪新闻，提示AI异常
+            return [{
+                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                "publish_time": "",
+                "description": {"en": "AI service did not return valid news. Please try again later.", "zh": "AI服务未返回有效新闻，请稍后重试。"},
+                "url": "https://www.reuters.com/",
+                "image_url": "",
+                "analysis": {
+                    "overview": {"en": "AI error or overload.", "zh": "AI接口异常或过载。"},
+                    "key_entities": {"en": "", "zh": ""},
+                    "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
+                }
+            }]
+        # 检查AI返回内容是否包含503、overload、error等异常
+        error_keywords = ["503", "overload", "error", "failed", "unavailable"]
+        if any(kw in response.lower() for kw in error_keywords):
+            logger.error(f"AI返回内容包含错误信息: {response}")
+            return [{
+                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                "publish_time": "",
+                "description": {"en": "AI service error or overload. Please try again later.", "zh": "AI服务异常或过载，请稍后重试。"},
+                "url": "https://www.reuters.com/",
+                "image_url": "",
+                "analysis": {
+                    "overview": {"en": "AI error or overload.", "zh": "AI接口异常或过载。"},
+                    "key_entities": {"en": "", "zh": ""},
+                    "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
+                }
+            }]
         # 解析新闻内容
         try:
             import json
             import re
-            
             # 提取新闻内容
             news_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
-            if news_match:
-                json_str = news_match.group(0)
-                try:
-                    # 尝试修复常见的JSON格式问题
-                    json_str = re.sub(r',\s*]', ']', json_str)
-                    json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
-                    if not json_str.endswith(']'):
-                        json_str = json_str + ']'
-                    
-                    articles = json.loads(json_str)
-                    # 验证每个文章对象是否完整
-                    valid_articles = []
-                    for article in articles:
-                        if all(key in article for key in ['title', 'description', 'url', 'analysis']):
-                            if (all(key in article['title'] for key in ['en', 'zh']) and
-                                all(key in article['description'] for key in ['en', 'zh']) and
-                                all(key in article['analysis'] for key in ['overview', 'key_entities', 'impact']) and
-                                all(key in article['analysis']['overview'] for key in ['en', 'zh']) and
-                                all(key in article['analysis']['key_entities'] for key in ['en', 'zh']) and
-                                all(key in article['analysis']['impact'] for key in ['en', 'zh'])):
-                                valid_articles.append(article)
-                            else:
-                                logger.warning(f"跳过不完整的文章: {article.get('title', {}).get('en', 'Unknown')}")
+            if not news_match:
+                logger.error(f"未找到新闻内容，AI原始返回: {response}")
+                return [{
+                    "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                    "publish_time": "",
+                    "description": {"en": "AI did not return valid news JSON. Please try again later.", "zh": "AI未返回有效新闻JSON，请稍后重试。"},
+                    "url": "https://www.reuters.com/",
+                    "image_url": "",
+                    "analysis": {
+                        "overview": {"en": "AI response format error.", "zh": "AI响应格式错误。"},
+                        "key_entities": {"en": "", "zh": ""},
+                        "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
+                    }
+                }]
+            json_str = news_match.group(0)
+            try:
+                # 尝试修复常见的JSON格式问题
+                json_str = re.sub(r',\s*]', ']', json_str)
+                json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+                if not json_str.endswith(']'):
+                    json_str = json_str + ']'
+                articles = json.loads(json_str)
+                # 验证每个文章对象是否完整
+                valid_articles = []
+                for article in articles:
+                    if all(key in article for key in ['title', 'description', 'url', 'analysis']):
+                        if (all(key in article['title'] for key in ['en', 'zh']) and
+                            all(key in article['description'] for key in ['en', 'zh']) and
+                            all(key in article['analysis'] for key in ['overview', 'key_entities', 'impact']) and
+                            all(key in article['analysis']['overview'] for key in ['en', 'zh']) and
+                            all(key in article['analysis']['key_entities'] for key in ['en', 'zh']) and
+                            all(key in article['analysis']['impact'] for key in ['en', 'zh'])):
+                            valid_articles.append(article)
                         else:
-                            logger.warning(f"跳过缺少必需字段的文章: {article.get('title', {}).get('en', 'Unknown')}")
-                    
-                    if valid_articles:
-                        logger.info(f"成功分析 {len(valid_articles)} 条新闻")
-                        return valid_articles
+                            logger.warning(f"跳过不完整的文章: {article.get('title', {}).get('en', 'Unknown')}")
                     else:
-                        logger.error("没有找到完整的新闻内容")
-                        return []
-                except json.JSONDecodeError as e:
-                    logger.error(f"新闻JSON解析失败: {str(e)}")
-                    return []
-            else:
-                logger.error("未找到新闻内容")
-                return []
-                
+                        logger.warning(f"跳过缺少必需字段的文章: {article.get('title', {}).get('en', 'Unknown')}")
+                if valid_articles:
+                    logger.info(f"成功分析 {len(valid_articles)} 条新闻")
+                    return valid_articles
+                else:
+                    logger.error(f"没有找到完整的新闻内容，AI原始返回: {response}")
+                    return [{
+                        "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                        "publish_time": "",
+                        "description": {"en": "AI did not return valid news. Please try again later.", "zh": "AI未返回有效新闻，请稍后重试。"},
+                        "url": "https://www.reuters.com/",
+                        "image_url": "",
+                        "analysis": {
+                            "overview": {"en": "AI returned no valid news.", "zh": "AI未返回有效新闻。"},
+                            "key_entities": {"en": "", "zh": ""},
+                            "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
+                        }
+                    }]
+            except json.JSONDecodeError as e:
+                logger.error(f"新闻JSON解析失败: {str(e)}，原始JSON字符串: {json_str}")
+                return [{
+                    "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                    "publish_time": "",
+                    "description": {"en": "AI returned invalid JSON. Please try again later.", "zh": "AI返回了无效的JSON，请稍后重试。"},
+                    "url": "https://www.reuters.com/",
+                    "image_url": "",
+                    "analysis": {
+                        "overview": {"en": "AI JSON decode error.", "zh": "AI JSON解析错误。"},
+                        "key_entities": {"en": "", "zh": ""},
+                        "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
+                    }
+                }]
         except Exception as e:
             logger.error(f"处理新闻响应时出错: {str(e)}")
             return []
@@ -312,15 +372,12 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
         f'.container {{ max-width: 800px; width: 100%; margin: 0 auto; padding: 20px; }}'
         f'.title {{ color: #2c3e50; border-bottom: none; padding-bottom: 15px; text-align: center; font-size: 20px; margin: 0; }}'
         f'.article {{ background: #ffffff; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}'
-        f'.article h3 {{ margin: 0 0 10px 0; font-size: 16px; line-height: 1.4; }}'
+        f'.article h3, .article .translation-title {{ font-size: 16px; line-height: 1.4; color: #2c3e50; margin: 0 0 10px 0; }}'
+        f'.summary, .translation-summary {{ margin: 10px 0; line-height: 1.5; font-size: 14px; color: #222; }}'
+        f'.ai-analysis p, .ai-analysis .translation-analysis {{ margin: 6px 0; font-size: 13px; color: #222; }}'
         f'.article a {{ color: #2980b9; text-decoration: none; display: block; word-break: break-all; }}'
         f'.article a:hover {{ color: #3498db; text-decoration: none; }}'
         f'.article-meta {{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; color: #7f8c8d; font-size: 13px; }}'
-        f'.summary {{ margin: 10px 0; line-height: 1.5; font-size: 14px; }}'
-        f'.ai-analysis {{ background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 12px; }}'
-        f'.ai-analysis h4 {{ margin: 0 0 8px 0; color: #2c3e50; font-size: 15px; }}'
-        f'.ai-analysis p {{ margin: 6px 0; font-size: 13px; }}'
-        f'.translation {{ color: #666; font-size: 13px; margin-top: 4px; }}'
         f'.news-image {{ width: 100%; max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }}'
         f'.image-container {{ position: relative; width: 100%; margin: 10px 0; }}'
         f'.publish-time {{ color: #95a5a6; font-size: 12px; margin: 5px 0; }}'
@@ -356,8 +413,8 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             processed_url = f"https://www.reuters.com/{processed_url.lstrip('/')}"
         html_content += (
             f'<div class="article">'
-            f'<h3><a href="{processed_url}" target="_blank">{article["title"]["en"]}</a></h3>'
-            f'<div class="translation">{article["title"]["zh"]}</div>'
+            f'<h3 class="translation-title"><a href="{processed_url}" target="_blank">{article["title"]["en"]}</a></h3>'
+            f'<div class="translation-title">{article["title"]["zh"]}</div>'
         )
         
         # 如果有发布时间，格式化并显示时间
@@ -375,15 +432,15 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             )
             
         html_content += (
-            f'<div class="summary">{article["description"]["en"]}</div>'
-            f'<div class="translation">{article["description"]["zh"]}</div>'
+            f'<div class="summary translation-summary">{article["description"]["en"]}</div>'
+            f'<div class="translation-summary">{article["description"]["zh"]}</div>'
             f'<div class="ai-analysis">'
             f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]["en"]}</p>'
-            f'<div class="translation">{article["analysis"]["overview"]["zh"]}</div>'
+            f'<div class="translation-analysis">{article["analysis"]["overview"]["zh"]}</div>'
             # f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]["en"]}</p>'
-            # f'<div class="translation">{article["analysis"]["key_entities"]["zh"]}</div>'
+            # f'<div class="translation-analysis">{article["analysis"]["key_entities"]["zh"]}</div>'
             f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]["en"]}</p>'
-            f'<div class="translation">{article["analysis"]["impact"]["zh"]}</div>'
+            f'<div class="translation-analysis">{article["analysis"]["impact"]["zh"]}</div>'
             f'</div>'
             f'</div>'
         )

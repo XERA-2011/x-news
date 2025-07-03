@@ -78,10 +78,10 @@ def get_news_content() -> str:
         soup = BeautifulSoup(html, 'html.parser')
         main_tag = soup.find('main')
         if main_tag:
-            # section_tag = main_tag.find('section')
-            # if section_tag:
-            #     section_html = str(section_tag)
-            # else:
+            section_tags = main_tag.find_all('section')
+            if section_tags:
+                section_html = "".join(str(tag) for tag in section_tags[:5])
+            else:
                 section_html = str(main_tag)
         else:
             # 降级为 <body> 或全文

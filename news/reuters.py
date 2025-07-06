@@ -164,7 +164,20 @@ HTML内容：
             }]
         # 检查AI返回内容是否包含503、overload、error等异常
         error_keywords = ["503", "overload", "error", "failed", "unavailable"]
-        if any(kw in response.lower() for kw in error_keywords):
+        # 优化：仅当返回内容整体为错误提示时才认定为异常
+        # 如果返回内容为JSON格式或包含JSON数组，则不因包含关键词而误判为异常
+        import json
+        import re
+        is_json_like = False
+        try:
+            # 尝试直接解析为JSON
+            json.loads(response)
+            is_json_like = True
+        except Exception:
+            # 或者包含JSON数组的结构
+            if re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL):
+                is_json_like = True
+        if not is_json_like and any(kw in response.lower() for kw in error_keywords):
             logger.error(f"AI返回内容包含错误信息: {response}")
             return [{
                 "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},

@@ -219,9 +219,8 @@ HTML内容：
                     if all(key in article for key in ['title', 'description', 'url', 'analysis']):
                         if (all(key in article['title'] for key in ['en', 'zh']) and
                             all(key in article['description'] for key in ['en', 'zh']) and
-                            all(key in article['analysis'] for key in ['overview', 'key_entities', 'impact']) and
+                            all(key in article['analysis'] for key in ['overview', 'impact']) and
                             all(key in article['analysis']['overview'] for key in ['en', 'zh']) and
-                            all(key in article['analysis']['key_entities'] for key in ['en', 'zh']) and
                             all(key in article['analysis']['impact'] for key in ['en', 'zh'])):
                             valid_articles.append(article)
                         else:

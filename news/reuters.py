@@ -99,21 +99,21 @@ def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
     """使用AI分析新闻内容，返回前10条最重要的新闻"""
     try:
         prompt = f"""请分析以下Reuters新闻页面的HTML内容，提取最重要的前10条新闻。请按重要性排序，对于每条新闻，请提供：
-1. 标题（英文原文和中文翻译）
+1. 标题（英文原文、中文翻译、以及标题中的重点词汇翻译）
 2. 发布时间（如果有）
 3. 简要描述（英文原文和中文翻译）
 4. 新闻链接
 5. 相关图片链接（如果有的话）
 6. 主要事件概述（英文原文和中文翻译）
-7. 关键人物和机构（英文原文和中文翻译）
-8. 事件影响（英文原文和中文翻译）
+7. 事件影响（英文原文和中文翻译）
 
 请特别注意提取h2、h3标题下的重要新闻内容。请以JSON格式返回，格式如下：
 [
     {{
         "title": {{
             "en": "英文标题",
-            "zh": "中文标题"
+            "zh": "中文标题",
+            "key_vocab": "critical minerals : 关键矿物、export ban : 出口禁令"
         }},
         "publish_time": "发布时间（如果有）",
         "description": {{
@@ -126,10 +126,6 @@ def analyze_news_with_ai(html_content: str) -> List[Dict[str, Any]]:
             "overview": {{
                 "en": "英文概述",
                 "zh": "中文概述"
-            }},
-            "key_entities": {{
-                "en": "英文关键人物和机构",
-                "zh": "中文关键人物和机构"
             }},
             "impact": {{
                 "en": "英文影响",
@@ -151,14 +147,13 @@ HTML内容：
             logger.error(f"AI返回结果无效（None、非字符串或空字符串），实际返回: {repr(response)}")
             # 返回一条伪新闻，提示AI异常
             return [{
-                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取", "key_vocab": ""},
                 "publish_time": "",
                 "description": {"en": "AI service did not return valid news. Please try again later.", "zh": "AI服务未返回有效新闻，请稍后重试。"},
                 "url": "https://www.reuters.com/",
                 "image_url": "",
                 "analysis": {
                     "overview": {"en": "AI error or overload.", "zh": "AI接口异常或过载。"},
-                    "key_entities": {"en": "", "zh": ""},
                     "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
                 }
             }]
@@ -180,14 +175,13 @@ HTML内容：
         if not is_json_like and any(kw in response.lower() for kw in error_keywords):
             logger.error(f"AI返回内容包含错误信息: {response}")
             return [{
-                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取"},
+                "title": {"en": "AI analysis failed", "zh": "AI分析失败，部分新闻内容无法获取", "key_vocab": ""},
                 "publish_time": "",
                 "description": {"en": "AI service error or overload. Please try again later.", "zh": "AI服务异常或过载，请稍后重试。"},
                 "url": "https://www.reuters.com/",
                 "image_url": "",
                 "analysis": {
                     "overview": {"en": "AI error or overload.", "zh": "AI接口异常或过载。"},
-                    "key_entities": {"en": "", "zh": ""},
                     "impact": {"en": "No news available.", "zh": "暂无新闻内容。"}
                 }
             }]
@@ -428,6 +422,7 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             f'<div class="article">'
             f'<h3 class="translation-title"><a href="{processed_url}" target="_blank">{article["title"]["en"]}</a></h3>'
             f'<div class="translation-title">{article["title"]["zh"]}</div>'
+            f'<div style="font-size: 13px; color: #777; margin-top: 5px; margin-bottom: 10px;"><strong>重点词汇:</strong> {article["title"].get("key_vocab", "N/A")}</div>'
         )
         
         # 如果有发布时间，格式化并显示时间
@@ -450,8 +445,6 @@ def create_email_content(articles: List[Dict[str, Any]]) -> str:
             f'<div class="ai-analysis">'
             f'<p><strong>主要事件：</strong>{article["analysis"]["overview"]["en"]}</p>'
             f'<div class="translation-analysis">{article["analysis"]["overview"]["zh"]}</div>'
-            # f'<p><strong>关键人物和机构：</strong>{article["analysis"]["key_entities"]["en"]}</p>'
-            # f'<div class="translation-analysis">{article["analysis"]["key_entities"]["zh"]}</div>'
             f'<p><strong>事件影响：</strong>{article["analysis"]["impact"]["en"]}</p>'
             f'<div class="translation-analysis">{article["analysis"]["impact"]["zh"]}</div>'
             f'</div>'
@@ -505,8 +498,7 @@ def test_news_fetching() -> None:
             logger.info("AI分析:")
             logger.info(f"- 英文概述: {article['analysis']['overview']['en']}")
             logger.info(f"- 中文概述: {article['analysis']['overview']['zh']}")
-            logger.info(f"- 英文关键人物和机构: {article['analysis']['key_entities']['en']}")
-            logger.info(f"- 中文关键人物和机构: {article['analysis']['key_entities']['zh']}")
+
             logger.info(f"- 英文影响: {article['analysis']['impact']['en']}")
             logger.info(f"- 中文影响: {article['analysis']['impact']['zh']}")
             logger.info("-" * 80)

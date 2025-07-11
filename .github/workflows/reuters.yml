@@ -2,7 +2,7 @@ name: x-reuters
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # UTC 4:00 → 北京时间 12:00
+    - cron: '30 3 * * *'  # UTC 3:30 → 北京时间 11:30
   workflow_dispatch:  # 保留手动触发选项
 
 permissions:

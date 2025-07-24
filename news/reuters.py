@@ -359,14 +359,14 @@ def format_publish_time(time_str: Any) -> str:
             return dt_obj.strftime(target_format)
         except ValueError:
             continue
-            
+
     return time_str
 
 def create_email_content(articles: List[Dict[str, Any]]) -> str:
     """生成HTML邮件内容"""
     # Sort articles by publish time (newest first)
-    articles.sort(key=lambda x: x.get("publish_time", ""), reverse=True)
-    
+    articles.sort(key=lambda x: str(x.get("publish_time") or ""), reverse=True)
+
     html_content = (
         f'<html>'
         f'<head>'

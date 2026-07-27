@@ -5,5 +5,11 @@
   "compatibility_date": "2026-01-01",
   "observability": {
     "enabled": true
-  }
+  },
+  "routes": [
+    {
+      "pattern": "xera.cc.cd",
+      "custom_domain": true
+    }
+  ]
 }
